@@ -8,7 +8,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 APPDIR="$ROOT/macos/Ritrovo"
 OUT=${OUT:-$ROOT/build-macos/app}
-VERSION=${VERSION:-0.1.0}
+VERSION=${VERSION:-0.3.0}
 MACOS_MIN=13.0
 
 "$ROOT/darwin/build-macos.sh"

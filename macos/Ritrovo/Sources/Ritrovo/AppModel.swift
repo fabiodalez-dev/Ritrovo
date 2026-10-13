@@ -344,24 +344,31 @@ final class AppModel: ObservableObject {
     func resume(_ entry: HistoryEntry) {
         guard !isBusy, canResume(entry) else { return }
         let saved = URL(fileURLWithPath: entry.path).appendingPathComponent(".ritrovo.ses")
-        guard var text = try? String(contentsOf: saved, encoding: .utf8) else { return }
-        // Second line of the session file: "<device> <commands>". The engine
-        // ends it with "inter" (back to its text menus once done): without a
-        // terminal that would never end, so the copy given to it drops it.
-        var lines = text.components(separatedBy: "\n")
-        guard lines.count > 1 else { return }
-        if lines[1].hasSuffix(",inter") { lines[1].removeLast(",inter".count) }
-        text = lines.joined(separator: "\n")
-        let device = lines[1].split(separator: " ").first.map(String.init) ?? ""
-        guard let ctl = try? Runner.controlDir() else { return }
+        guard let text = try? String(contentsOf: saved, encoding: .utf8), let ctl = try? Runner.controlDir() else {
+            alert = "La sessione salvata non è leggibile."
+            return
+        }
+        // An image path with a space is given to the engine through a link
+        // without spaces in the app's private folder. Only for files the user
+        // can read: a physical disk (/dev/rdiskN) has no spaces anyway.
+        let link = ctl.appendingPathComponent("sorgente")
+        guard let prepared = SessionFile.prepare(text, alias: { device in
+            guard device.contains(" "), FileManager.default.isReadableFile(atPath: device),
+                  (try? FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: device)) != nil else { return nil }
+            return link.path
+        }) else {
+            alert = "La sessione salvata non è valida."
+            return
+        }
+        let target = prepared.device.contains(" ") && FileManager.default.fileExists(atPath: link.path) ? link.path : prepared.device
         let seed = ctl.appendingPathComponent("resume.ses")
-        do { try text.write(to: seed, atomically: true, encoding: .utf8) } catch { alert = error.localizedDescription; return }
+        do { try prepared.text.write(to: seed, atomically: true, encoding: .utf8) } catch { alert = error.localizedDescription; return }
         guard let dir = sessionFolder("Ritrovo", entry.sourceName + " (ripresa)") else { return }
         let session = RecoverySession(sourceName: entry.sourceName, sessionDir: dir)
         session.onProgress = { s in Dock.badge(s.totalFiles) }
         session.onFinish = { [weak self] s in self?.recoveryFinished(s) }
         do {
-            try session.start(target: device, command: "", needsAdmin: !FileManager.default.isReadableFile(atPath: device),
+            try session.start(target: target, command: "", needsAdmin: !FileManager.default.isReadableFile(atPath: prepared.device),
                               verbose: options.verboseLog, resumeFrom: seed)
             self.session = session
             record(session, completed: false)

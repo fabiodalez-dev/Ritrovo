@@ -91,10 +91,13 @@ public struct EnginePartition: Identifiable, Hashable {
     public var id: Int { order }
     public var isWholeDisk: Bool { order == Self.wholeDiskOrder }
 
-    /// File system type, the third column of the PhotoRec partition line.
+    /// File system name. The engine's info always starts with it ("NTFS,
+    /// blocksize=4096", "ext4 blocksize=4096"); without info, the third column
+    /// of the partition line is the best guess ("HPFS - NTFS" would give HPFS).
     public var fileSystem: String {
-        let tokens = description.split(separator: " ")
         if isWholeDisk { return "" }
+        if let first = info.split(whereSeparator: { $0 == " " || $0 == "," }).first { return String(first) }
+        let tokens = description.split(separator: " ")
         return tokens.count > 2 ? String(tokens[2]) : ""
     }
 
@@ -107,7 +110,7 @@ public struct EnginePartition: Identifiable, Hashable {
     /// FAT file systems can be "unformatted" (names and folders back).
     public var isFAT: Bool {
         let text = (fileSystem + " " + info).lowercased()
-        return text.contains("fat") && !text.contains("exfat")
+        return text.contains("fat") && !text.contains("exfat") && !text.contains("fatx")
     }
 
     /// Free space carving needs a file system the engine understands.
@@ -137,6 +140,14 @@ public struct ImageFilters: Equatable, Codable {
         self.minBytes = minBytes
     }
     public var isActive: Bool { minWidth > 0 || minHeight > 0 || minPixels > 0 || minBytes > 0 }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        minWidth = try c.decodeIfPresent(UInt32.self, forKey: .minWidth) ?? 0
+        minHeight = try c.decodeIfPresent(UInt32.self, forKey: .minHeight) ?? 0
+        minPixels = try c.decodeIfPresent(UInt64.self, forKey: .minPixels) ?? 0
+        minBytes = try c.decodeIfPresent(UInt64.self, forKey: .minBytes) ?? 0
+    }
 }
 
 /// How carefully recovered files are checked (PhotoRec "paranoid").
@@ -183,6 +194,14 @@ public struct Geometry: Equatable, Codable {
         self.sectorSize = sectorSize
     }
     public var isSet: Bool { cylinders > 0 || heads > 0 || sectors > 0 || sectorSize > 0 }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        cylinders = try c.decodeIfPresent(UInt64.self, forKey: .cylinders) ?? 0
+        heads = try c.decodeIfPresent(UInt32.self, forKey: .heads) ?? 0
+        sectors = try c.decodeIfPresent(UInt32.self, forKey: .sectors) ?? 0
+        sectorSize = try c.decodeIfPresent(UInt32.self, forKey: .sectorSize) ?? 0
+    }
 }
 
 /// Every option of the engine's batch mode (src/phcli.c, src/poptions.c,
@@ -209,6 +228,28 @@ public struct RecoveryOptions: Equatable, Codable {
 
     public init(enabledFormats: Set<String>) {
         self.enabledFormats = enabledFormats
+    }
+
+    /// Settings saved by an older version miss the options added later: each
+    /// missing key takes its default instead of failing the whole decoding
+    /// (which would silently reset every saved setting).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = RecoveryOptions(enabledFormats: [])
+        enabledFormats = try c.decodeIfPresent(Set<String>.self, forKey: .enabledFormats) ?? d.enabledFormats
+        filters = try c.decodeIfPresent(ImageFilters.self, forKey: .filters) ?? d.filters
+        searchSpace = (try? c.decodeIfPresent(SearchSpace.self, forKey: .searchSpace)) ?? d.searchSpace
+        ext2Mode = try c.decodeIfPresent(Bool.self, forKey: .ext2Mode) ?? d.ext2Mode
+        validation = (try? c.decodeIfPresent(Validation.self, forKey: .validation)) ?? d.validation
+        keepCorrupted = try c.decodeIfPresent(Bool.self, forKey: .keepCorrupted) ?? d.keepCorrupted
+        lowMemory = try c.decodeIfPresent(Bool.self, forKey: .lowMemory) ?? d.lowMemory
+        blockSize = try c.decodeIfPresent(UInt32.self, forKey: .blockSize) ?? d.blockSize
+        geometry = try c.decodeIfPresent(Geometry.self, forKey: .geometry) ?? d.geometry
+        partitionTable = (try? c.decodeIfPresent(PartitionTable.self, forKey: .partitionTable)) ?? d.partitionTable
+        ext2Group = try c.decodeIfPresent(UInt32.self, forKey: .ext2Group) ?? d.ext2Group
+        ext2Inode = try c.decodeIfPresent(UInt32.self, forKey: .ext2Inode) ?? d.ext2Inode
+        unformatFAT = try c.decodeIfPresent(Bool.self, forKey: .unformatFAT) ?? d.unformatFAT
+        verboseLog = try c.decodeIfPresent(Bool.self, forKey: .verboseLog) ?? d.verboseLog
     }
 }
 
@@ -358,6 +399,50 @@ public enum PrivilegePolicy {
     }
 
     public static func mayRunAsRoot(_ target: String) -> Bool { isRawDisk(target) }
+}
+
+// MARK: - Session file to resume
+
+/// The engine's session file: "#<time>", then "<device> <table>,<order>,...,inter",
+/// then the sectors still to read. The engine splits the second line at the
+/// first space, so a device path with a space (any copy saved by Ritrovo in
+/// "Immagine <name> <date>/disco.img") cannot be resumed as written.
+public enum SessionFile {
+    public struct Resume: Equatable {
+        /// Device or image as recorded by the engine, spaces included.
+        public let device: String
+        /// Session text for the engine: "inter" dropped, device replaced by `alias`.
+        public let text: String
+    }
+
+    static let tables = ["partition_i386", "partition_gpt", "partition_mac", "partition_none",
+                         "partition_sun", "partition_xbox", "partition_humax"]
+
+    /// The device ends where the table keyword starts, so spaces inside the
+    /// path are kept.
+    public static func device(inLine line: String) -> String? {
+        var best: Range<String.Index>?
+        for t in tables {
+            if let r = line.range(of: " " + t + ","), best == nil || r.lowerBound < best!.lowerBound { best = r }
+        }
+        guard let best else { return line.split(separator: " ").first.map(String.init) }
+        let device = String(line[..<best.lowerBound])
+        return device.isEmpty ? nil : device
+    }
+
+    /// `alias(device)` returns the path to give the engine instead of the
+    /// device (a link without spaces), or nil to keep it.
+    public static func prepare(_ text: String, alias: (String) -> String? = { _ in nil }) -> Resume? {
+        var lines = text.components(separatedBy: "\n")
+        guard lines.count > 2, lines[0].hasPrefix("#"), let device = device(inLine: lines[1]) else { return nil }
+        // "inter" sends the engine back to its text menus once done: without a
+        // terminal it would never end.
+        if lines[1].hasSuffix(",inter") { lines[1].removeLast(",inter".count) }
+        if let replacement = alias(device) {
+            lines[1] = replacement + lines[1].dropFirst(device.count)
+        }
+        return Resume(device: device, text: lines.joined(separator: "\n"))
+    }
 }
 
 // MARK: - Shell helpers

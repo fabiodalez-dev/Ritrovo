@@ -15,6 +15,8 @@ struct ResultsGallery: View {
     @State private var sort: ResultSort = .newest
     @State private var tileSize: Double = 132
     @State private var selection = Set<URL>()
+    /// Last file clicked without ⇧: one end of a ⇧ click range, like the Finder.
+    @State private var anchor: URL?
     @State private var preview: URL?
 
     private var shown: [RecoveredFile] { ResultFilter.apply(files, category: category, query: query, sort: sort) }
@@ -54,10 +56,13 @@ struct ResultsGallery: View {
             }
         }
         .quickLookPreview($preview, in: shown.map(\.url))
-        .onChange(of: files) { _ in selection.formIntersection(Set(files.map(\.url))) }
+        .onChange(of: files) { _ in
+            selection.formIntersection(Set(files.map(\.url)))
+            if let a = anchor, !selection.contains(a) { anchor = nil }
+        }
         .background(
             // Space opens Quick Look on the selection, like the Finder.
-            Button("") { preview = selection.first ?? shown.first?.url }
+            Button("") { preview = anchor.flatMap { selection.contains($0) ? $0 : nil } ?? selection.first ?? shown.first?.url }
                 .keyboardShortcut(.space, modifiers: [])
                 .opacity(0)
                 .disabled(shown.isEmpty)
@@ -65,14 +70,10 @@ struct ResultsGallery: View {
     }
 
     private func select(_ file: RecoveredFile) {
-        if NSEvent.modifierFlags.contains(.command) {
-            if selection.contains(file.url) { selection.remove(file.url) } else { selection.insert(file.url) }
-        } else if NSEvent.modifierFlags.contains(.shift), let anchor = selection.first,
-                  let a = shown.firstIndex(where: { $0.url == anchor }), let b = shown.firstIndex(of: file) {
-            selection.formUnion(shown[min(a, b)...max(a, b)].map(\.url))
-        } else {
-            selection = [file.url]
-        }
+        let flags = NSEvent.modifierFlags
+        selection = GallerySelection.click(file.url, in: shown.map(\.url), selection: selection, anchor: anchor,
+                                           command: flags.contains(.command), shift: flags.contains(.shift))
+        if !flags.contains(.shift) { anchor = file.url }
     }
 
     @ViewBuilder private func contextMenu(for file: RecoveredFile) -> some View {

@@ -249,5 +249,9 @@ check(!PrivilegePolicy.mayRunAsRoot("/dev/rdisk4/../../etc/master.passwd"), "tra
 check(!PrivilegePolicy.mayRunAsRoot("/dev/rdisk4 extra"), "trailing text refused")
 check(!PrivilegePolicy.mayRunAsRoot("/private/tmp/disco.img"), "image refused as root")
 
+print(failures == 0 ? "Base: all tests passed" : "Base: \(failures) test(s) failed")
+
+// Review tests (ReviewTests.swift): 50 named tests, known issues counted apart.
+failures += runReviewTests()
 print(failures == 0 ? "All tests passed" : "\(failures) test(s) failed")
 exit(failures == 0 ? 0 : 1)

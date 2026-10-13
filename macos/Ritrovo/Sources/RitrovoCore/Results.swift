@@ -36,11 +36,11 @@ public enum FileCategory: String, CaseIterable, Identifiable, Codable {
 
     private static let map: [String: FileCategory] = {
         var m: [String: FileCategory] = [:]
-        let photo = "jpg jpeg png gif bmp tif tiff heic heif webp psd psb crw cr2 cr3 nef nrw orf raf rw2 mrw x3f x3i arw srf sr2 dng pef srw raw jp2 ico icns pcx tga svg xcf rdc cam bpg pct psp oci dpx wdp xv spe kdc dcr 3fr erf mef mos"
-        let video = "mov mp4 m4v mpg mpeg mkv avi webm flv wmv asf 3gp 3g2 m2ts mts ts swf ogv vob mxf r3d braw ari dv riff rm rmvb"
-        let audio = "mp3 wav flac ogg oga m4a aac wma aif aiff aifc mid midi opus amr ape au caf mka ra wv dsf"
-        let document = "pdf doc docx xls xlsx ppt pptx odt ods odp odg rtf txt html htm xml csv md pages numbers key epub tex ps eps one pub vsd wpd sxw sxc indd ai qxd mobi chm djvu"
-        let archive = "zip rar 7z gz tgz tar bz2 xz lz lzma zst dmg iso cab arj lzh sit sitx cpio rpm deb jar apk"
+        let photo = "jpg jpeg png gif bmp tif tiff heic heif webp psd psb crw cr2 cr3 nef nrw orf raf rw2 mrw x3f x3i arw srf sr2 dng pef srw raw jp2 ico icns pcx tga svg xcf rdc cam bpg pct psp oci dpx wdp xv spe kdc dcr 3fr erf mef mos exr pnm pbm pgm ppm qkt dcm fits nd2 clip aseprite mdp wpb afdesign emf wmf"
+        let video = "mov mp4 m4v mpg mpeg mkv avi webm flv wmv asf 3gp 3g2 m2ts mts ts swf ogv vob mxf r3d braw ari dv riff rm rmvb tivo wtv mlv veg fcp ifo cpi mpl bdm dvr dad bvr mdat"
+        let audio = "mp3 wav flac ogg oga m4a aac wma aif aiff aifc mid midi opus amr ape au caf mka ra wv dsf all als flp logic exs lso ptf rns rx2 ses it xm shn gsm dss ds2 x4a fxp vdj"
+        let document = "pdf doc docx xls xlsx ppt pptx odt ods odp odg rtf txt html htm xml csv md pages numbers key epub tex ps eps one pub vsd wpd sxw sxc indd ai qxd mobi chm djvu tx? accdb mdb dbf sqlite fp5 fp7 wks cwk gp2 njx pap lit dvi djv qdf tax qbb sgcta steuer2014 sav dta mat h5 hdf pst nsf edb sib mus gp5 gpx ptb tg dwg dxf skp 3dm 3ds c4d blend fbx stl mb max lxo dst catdrawing drw prt asm frm mfg tph skd mcd z2d zcode mk5 che amd hm shp plt pcb ahn paf hr9 atd comicdoc studio freeway fh5 fh10 snag wnk"
+        let archive = "zip rar 7z gz tgz tar bz2 xz lz lzma zst dmg iso cab arj lzh sit sitx cpio rpm deb jar apk a ace dar lzo xar pa par2 cp_ bac bkf fbf gho tib v2i vib spf mig dump wim vmdk vdi cow hds sdsk sparseimage diskimage e01"
         for (list, cat) in [(photo, FileCategory.photo), (video, .video), (audio, .audio), (document, .document), (archive, .archive)] {
             for ext in list.split(separator: " ") { m[String(ext)] = cat }
         }
@@ -94,7 +94,13 @@ public enum ResultFilter {
             (q.isEmpty || f.name.localizedCaseInsensitiveContains(q) || f.ext == q.lowercased())
         }
         switch sort {
-        case .newest: return filtered
+        case .newest:
+            // Same second (the engine writes many files per second): the later
+            // name (f0123 after f0099) was found later.
+            return filtered.sorted {
+                $0.modified != $1.modified ? $0.modified > $1.modified
+                    : $0.name.localizedStandardCompare($1.name) == .orderedDescending
+            }
         case .largest: return filtered.sorted { $0.size > $1.size }
         case .smallest: return filtered.sorted { $0.size < $1.size }
         case .name: return filtered.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -147,20 +153,48 @@ public final class RecoveryScanner {
     }
 
     /// Every regular file under the session folder (after organizing too).
+    /// Paths are built from `dir` as given: the URL enumerator would return
+    /// them with symbolic links resolved (/private/var for /var), and callers
+    /// compare them with paths derived from `dir` (Duplicati, CSV relative paths).
     public static func allFiles(in dir: URL) -> [RecoveredFile] {
-        let fm = FileManager.default
-        guard let e = fm.enumerator(at: dir, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey, .contentModificationDateKey],
-                                    options: [.skipsHiddenFiles]) else { return [] }
+        guard let e = FileManager.default.enumerator(atPath: dir.path) else { return [] }
         var files: [RecoveredFile] = []
-        for case let url as URL in e {
-            let name = url.lastPathComponent
+        while let rel = e.nextObject() as? String {
+            let name = (rel as NSString).lastPathComponent
+            let attrs = e.fileAttributes ?? [:]
+            let type = attrs[.type] as? FileAttributeType
+            if name.hasPrefix(".") {
+                if type == .typeDirectory { e.skipDescendants() }
+                continue
+            }
+            // Symbolic links are never followed: only regular files count.
+            guard type == .typeRegular else { continue }
             if ignoredNames.contains(name) || ["photorec.log", "photorec.ses", "progress.jsonl", "report.csv"].contains(name) { continue }
             if name.hasPrefix("report-") && name.hasSuffix(".xml") { continue }
-            guard let v = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey, .contentModificationDateKey]),
-                  v.isRegularFile == true else { continue }
-            files.append(RecoveredFile(url: url, size: Int64(v.fileSize ?? 0), modified: v.contentModificationDate ?? Date()))
+            let size = (attrs[.size] as? NSNumber)?.int64Value ?? 0
+            let modified = attrs[.modificationDate] as? Date ?? Date()
+            files.append(RecoveredFile(url: dir.appendingPathComponent(rel), size: size, modified: modified))
         }
         return files.sorted { $0.url.path.localizedStandardCompare($1.url.path) == .orderedAscending }
+    }
+}
+
+// MARK: - Gallery selection
+
+public enum GallerySelection {
+    /// Finder-like click: ⌘ toggles one file, ⇧ selects the range from the
+    /// anchor (the last file clicked without ⇧), a plain click selects one.
+    public static func click(_ url: URL, in shown: [URL], selection: Set<URL>, anchor: URL?,
+                             command: Bool, shift: Bool) -> Set<URL> {
+        if command {
+            var s = selection
+            if s.contains(url) { s.remove(url) } else { s.insert(url) }
+            return s
+        }
+        if shift, let anchor, let a = shown.firstIndex(of: anchor), let b = shown.firstIndex(of: url) {
+            return Set(shown[min(a, b)...max(a, b)])
+        }
+        return [url]
     }
 }
 
