@@ -412,6 +412,16 @@ static pstatus_t fat_unformat_aux(struct ph_param *params, const struct ph_optio
  * 1: Stop by user request
  *    params->offset is set
  */
+/* In batch mode (/cmd) nobody can press the key display_message() waits for:
+ * with stdin closed the menu would loop forever. Log the message instead. */
+static void unformat_message(const struct ph_param *params, const char *msg)
+{
+  if(params->cmd_run!=NULL)
+    log_info("%s", msg);
+  else
+    display_message(msg);
+}
+
 pstatus_t fat_unformat(struct ph_param *params, const struct ph_options *options, alloc_data_t *list_search_space)
 {
   unsigned int sectors_per_cluster=0;
@@ -419,15 +429,18 @@ pstatus_t fat_unformat(struct ph_param *params, const struct ph_options *options
   params->blocksize=0;
   if(pfind_sectors_per_cluster(params->disk, params->partition, options->verbose, &sectors_per_cluster, &start_data, list_search_space)==0)
   {
-    display_message("Can't find FAT cluster size\n");
+    unformat_message(params, "Can't find FAT cluster size\n");
     return PSTATUS_OK;
   }
+  /* start_data is a sector number, part_offset a byte offset: compare bytes.
+   * In sectors, any partition starting past sector start_data (sector 63, the
+   * usual MBR start, against a data area at sector 256) was refused. */
+  start_data *= params->disk->sector_size;
   if(start_data <= params->partition->part_offset)
   {
-    display_message("FAT filesystem was beginning before the actual partition.");
+    unformat_message(params, "FAT filesystem was beginning before the actual partition.\n");
     return PSTATUS_OK;
   }
-  start_data *= params->disk->sector_size;
   del_search_space(list_search_space, params->partition->part_offset, start_data - 1);
   {
     uint64_t offset=start_data;
