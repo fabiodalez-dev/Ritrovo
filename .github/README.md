@@ -2,11 +2,11 @@
 
 Ritrovo is a native macOS app for recovering photos, videos and documents from disks, memory cards, USB drives and disk images: a deleted folder, a formatted card, a drive that is starting to fail.
 
-**The recovery engine is [PhotoRec](https://www.cgsecurity.org/wiki/PhotoRec) by Christophe Grenier (CGSecurity).** Ritrovo is only an interface: every file is found and rebuilt by the PhotoRec command line program bundled inside the app, so recovery results are the same as PhotoRec's own. Ritrovo is not an official CGSecurity product. This repository is a fork of [cgsecurity/testdisk](https://github.com/cgsecurity/testdisk); the app lives in [`macos/`](../macos).
+**The recovery engine is [PhotoRec](https://www.cgsecurity.org/wiki/PhotoRec) by Christophe Grenier (CGSecurity).** Ritrovo is only an interface: every file is found and rebuilt by the PhotoRec command line program bundled inside the app, so recovery results are the same as PhotoRec's own. Ritrovo is not an official CGSecurity product. This repository is a fork of [cgsecurity/testdisk](https://github.com/cgsecurity/testdisk); the app lives in [`macos/`](https://github.com/fabiodalez-dev/ritrovo/tree/main/macos).
 
 The interface is in Italian.
 
-![Choosing what to recover from a memory card](../macos/screenshots/impostazioni.png)
+![Choosing what to recover from a memory card](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/impostazioni.png)
 
 ## Download
 
@@ -23,9 +23,9 @@ The app is signed ad-hoc, not with an Apple Developer ID. The first time, right 
 
 The source is only ever read: Ritrovo never writes to it, and warns when the destination folder is on the disk being recovered.
 
-![Recovery in progress](../macos/screenshots/recupero.png)
+![Recovery in progress](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/recupero.png)
 
-![Recovered files](../macos/screenshots/risultati.png)
+![Recovered files](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/risultati.png)
 
 ## Features
 
@@ -41,11 +41,11 @@ The source is only ever read: Ritrovo never writes to it, and warns when the des
 
 | Formats | Advanced options | Dark appearance |
 |---|---|---|
-| ![Every format, by category](../macos/screenshots/formati.png) | ![Every engine option](../macos/screenshots/avanzate.png) | ![Results in dark appearance](../macos/screenshots/scuro.png) |
+| ![Every format, by category](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/formati.png) | ![Every engine option](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/avanzate.png) | ![Results in dark appearance](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/scuro.png) |
 
 ## Security
 
-Reading a raw disk needs root, so PhotoRec runs as root after the standard macOS administrator prompt, and only to read a physical disk: disk images are always read as the user. The helper script creates the destination folder itself, refuses existing folders and symbolic links, makes the engine write only inside that folder, and gives the files back to the user at the end. Details and the known limit of an ad-hoc signed app are in [`macos/README.md`](../macos/README.md#security).
+Reading a raw disk needs root, so PhotoRec runs as root after the standard macOS administrator prompt, and only to read a physical disk: disk images are always read as the user. The helper script creates the destination folder itself, refuses existing folders and symbolic links, makes the engine write only inside that folder, and gives the files back to the user at the end. Details and the known limit of an ad-hoc signed app are in [`macos/README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/macos/README.md#security).
 
 ## Build and tests
 
@@ -56,8 +56,8 @@ macos/build-app.sh
 cd macos/Ritrovo && swift run RitrovoCoreTests
 ```
 
-The end to end self test drives the real app through every screen and takes the screenshots on this page. See [`macos/README.md`](../macos/README.md#tests).
+The end to end self test drives the real app through every screen and takes the screenshots on this page. See [`macos/README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/macos/README.md#tests).
 
 ## License
 
-GNU General Public License, version 2 or later, like PhotoRec. See [`COPYING`](../COPYING). The original TestDisk and PhotoRec README is [`README.md`](../README.md) at the root of the repository.
+GNU General Public License, version 2 or later, like PhotoRec. See [`COPYING`](https://github.com/fabiodalez-dev/ritrovo/blob/main/COPYING). The original TestDisk and PhotoRec README is [`README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/README.md) at the root of the repository.
