@@ -8,7 +8,7 @@ import RitrovoCore
 /// multiple selection (⌘ and ⇧ click), drag to the Finder, copy to a folder.
 struct ResultsGallery: View {
     let files: [RecoveredFile]
-    var emptyText = "I file recuperati compariranno qui."
+    var emptyText = loc("Recovered files will appear here.")
 
     @State private var category: FileCategory?
     @State private var query = ""
@@ -34,7 +34,7 @@ struct ResultsGallery: View {
                     Image(systemName: files.isEmpty ? "tray" : "line.3.horizontal.decrease")
                         .font(.system(size: 26, weight: .light))
                         .foregroundStyle(Theme.ink3)
-                    Text(files.isEmpty ? emptyText : "Nessun file corrisponde ai filtri.")
+                    Text(files.isEmpty ? emptyText : loc("No file matches the filters."))
                         .font(.system(size: 13))
                         .foregroundStyle(Theme.ink2)
                 }
@@ -78,11 +78,11 @@ struct ResultsGallery: View {
 
     @ViewBuilder private func contextMenu(for file: RecoveredFile) -> some View {
         let targets = selection.contains(file.url) ? Array(selection) : [file.url]
-        Button("Apri") { targets.forEach { NSWorkspace.shared.open($0) } }
-        Button("Anteprima") { preview = file.url }
-        Button("Mostra nel Finder") { NSWorkspace.shared.activateFileViewerSelecting(targets) }
+        Button("Open") { targets.forEach { NSWorkspace.shared.open($0) } }
+        Button("Preview") { preview = file.url }
+        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting(targets) }
         Divider()
-        Button(targets.count > 1 ? "Copia \(targets.count) file in…" : "Copia in…") { copy(targets) }
+        Button(targets.count > 1 ? loc("Copy \(Format.number(targets.count)) files to…") : loc("Copy to…")) { copy(targets) }
     }
 
     private var toolbar: some View {
@@ -90,7 +90,7 @@ struct ResultsGallery: View {
         return HStack(spacing: 14) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 2) {
-                    FilterTab(title: "Tutti", count: files.count, selected: category == nil) { category = nil }
+                    FilterTab(title: loc("All"), count: files.count, selected: category == nil) { category = nil }
                     ForEach(FileCategory.allCases) { cat in
                         if let n = counts[cat], n > 0 {
                             FilterTab(title: cat.title, count: n, selected: category == cat) {
@@ -101,20 +101,20 @@ struct ResultsGallery: View {
                 }
             }
             Spacer(minLength: 8)
-            TextField("Cerca", text: $query)
+            TextField("Search", text: $query)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 150)
-            Picker("Ordina", selection: $sort) {
+            Picker("Sort", selection: $sort) {
                 ForEach(ResultSort.allCases) { Text($0.title).tag($0) }
             }
             .labelsHidden()
             .frame(width: 130)
             Slider(value: $tileSize, in: 96...240)
                 .frame(width: 80)
-                .help("Dimensione delle anteprime")
+                .help("Thumbnail size")
             if !selection.isEmpty {
-                Button("Copia \(selection.count)…") { copy(Array(selection)) }
-                    .help("Copia i file selezionati in un'altra cartella")
+                Button("Copy \(Format.number(selection.count))…") { copy(Array(selection)) }
+                    .help("Copy the selected files to another folder")
             }
         }
     }
@@ -124,7 +124,7 @@ struct ResultsGallery: View {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Copia qui"
+        panel.prompt = loc("Copy here")
         guard panel.runModal() == .OK, let dir = panel.url else { return }
         Task.detached {
             for url in urls {
@@ -201,7 +201,7 @@ struct FileTile: View {
             .brightness(hovering && !selected ? 0.03 : 0)
             VStack(alignment: .leading, spacing: 1) {
                 Text(file.name).font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.ink).lineLimit(1).truncationMode(.middle)
-                Text("\(file.ext.uppercased()) · \(Format.bytes(file.size))").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ink3)
+                Text(verbatim: file.ext.uppercased() + " · " + Format.bytes(file.size)).font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.ink3)
             }
         }
         .onHover { hovering = $0 }

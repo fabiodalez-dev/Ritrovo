@@ -17,7 +17,7 @@ Ritrovo is a native macOS app (SwiftUI) for recovering photos, videos and docume
 - History of recoveries; a stopped recovery can be resumed
 - Byte for byte copy of a failing disk into an image, then recovery from the copy
 - Notification, sound and Dock badge when a recovery ends; settings remembered between launches; keyboard shortcuts (⌘O, ⌘R, ⌘., ⇧⌘F, ⇧⌘R)
-- Light and dark appearance, Italian interface
+- Light and dark appearance; English and Italian interface, chosen in Settings (⌘,): English by default, Italian or the system language on request
 
 ## How it works
 
@@ -53,6 +53,12 @@ macos/build-app.sh
 
 The result is `build-macos/app/Ritrovo.app` and a DMG, universal (Apple Silicon and Intel), macOS 13 or later. The app is signed ad-hoc: on another Mac the first launch needs right click, Open (or removing the quarantine attribute), until it is signed with a Developer ID and notarized.
 
+
+## Localization
+
+English is the development language: the keys in the sources are the English text, `Resources/en.lproj` and `Resources/it.lproj` hold `Localizable.strings` and `InfoPlist.strings`. Text outside SwiftUI literals goes through `loc(...)` (RitrovoCore). Counts use two keys, one for 1 and one for the others ("1 file found", "%@ files found"), so both languages read right. The language chosen in Settings is written to `AppleLanguages` in the app's defaults and applied when the app starts.
+
+To check that nothing is missing, run the app in a language with `-NSShowNonLocalizedStrings YES`: macOS logs every key without a translation.
 
 ## License
 

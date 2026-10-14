@@ -1,0 +1,3 @@
+/* Info.plist text in English */
+"NSAppleEventsUsageDescription" = "Ritrovo asks for the administrator password to read disks.";
+"Disk image" = "Disk image";

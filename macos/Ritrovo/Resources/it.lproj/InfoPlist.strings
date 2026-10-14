@@ -1,1 +1,3 @@
-/* Italian is the development language */
+/* Info.plist text in Italian */
+"NSAppleEventsUsageDescription" = "Ritrovo chiede la password di amministratore per leggere i dischi.";
+"Disk image" = "Immagine disco";

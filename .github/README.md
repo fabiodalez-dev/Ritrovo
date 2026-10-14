@@ -4,9 +4,9 @@ Ritrovo is a native macOS app for recovering photos, videos and documents from d
 
 **The recovery engine is [PhotoRec](https://www.cgsecurity.org/wiki/PhotoRec) by Christophe Grenier (CGSecurity).** Ritrovo is only an interface: every file is found and rebuilt by the PhotoRec command line program bundled inside the app, so recovery results are the same as PhotoRec's own. Ritrovo is not an official CGSecurity product. This repository is a fork of [cgsecurity/testdisk](https://github.com/cgsecurity/testdisk); the app lives in [`macos/`](https://github.com/fabiodalez-dev/ritrovo/tree/main/macos).
 
-The interface is in Italian.
+The interface is in English and Italian: English by default, Italian (or the system language) in Ritrovo › Settings.
 
-![Choosing what to recover from a memory card](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/impostazioni.png)
+![Choosing what to recover from a memory card](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/setup.png)
 
 ## Download
 
@@ -23,9 +23,9 @@ The app is signed ad-hoc, not with an Apple Developer ID. The first time, right 
 
 The source is only ever read: Ritrovo never writes to it, and warns when the destination folder is on the disk being recovered.
 
-![Recovery in progress](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/recupero.png)
+![Recovery in progress](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/recovery.png)
 
-![Recovered files](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/risultati.png)
+![Recovered files](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/results.png)
 
 ## Features
 
@@ -38,10 +38,13 @@ The source is only ever read: Ritrovo never writes to it, and warns when the des
 - History of recoveries; a stopped recovery can be resumed
 - Notification, sound and Dock badge when a recovery ends; keyboard shortcuts (⌘O, ⌘R, ⌘., ⇧⌘F, ⇧⌘R)
 - Light and dark appearance
+- English and Italian interface, chosen in Settings (⌘,)
+
+![Choosing the interface language](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/language.png)
 
 | Formats | Advanced options | Dark appearance |
 |---|---|---|
-| ![Every format, by category](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/formati.png) | ![Every engine option](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/avanzate.png) | ![Results in dark appearance](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/scuro.png) |
+| ![Every format, by category](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/formats.png) | ![Every engine option](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/advanced.png) | ![Results in dark appearance](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/dark.png) |
 
 ## Security
 

@@ -18,10 +18,10 @@ enum EngineError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingEngine: return "Il motore di recupero manca nel pacchetto dell'app. Reinstalla Ritrovo."
-        case .cancelled: return "Autorizzazione annullata."
+        case .missingEngine: return loc("The recovery engine is missing from the app bundle. Reinstall Ritrovo.")
+        case .cancelled: return loc("Authorization cancelled.")
         case .failed(let msg): return msg
-        case .notAllowed: return "Questo file non è leggibile dal tuo utente. Per sicurezza la password di amministratore si usa solo per leggere i dischi fisici: copia il file in una cartella tua e riprova."
+        case .notAllowed: return loc("This file cannot be read by your user. For safety the administrator password is only used to read physical disks: copy the file to one of your folders and try again.")
         }
     }
 }
@@ -92,11 +92,11 @@ enum Privileged {
     static func run(shell command: String) throws {
         let source = "do shell script \(Shell.appleScriptString(command)) with administrator privileges"
         var error: NSDictionary?
-        guard let script = NSAppleScript(source: source) else { throw EngineError.failed("AppleScript non valido") }
+        guard let script = NSAppleScript(source: source) else { throw EngineError.failed(loc("Invalid AppleScript")) }
         script.executeAndReturnError(&error)
         if let error {
             if (error[NSAppleScript.errorNumber] as? Int) == -128 { throw EngineError.cancelled }
-            throw EngineError.failed(error[NSAppleScript.errorMessage] as? String ?? "Errore di autorizzazione")
+            throw EngineError.failed(error[NSAppleScript.errorMessage] as? String ?? loc("Authorization error"))
         }
     }
 }
@@ -128,7 +128,7 @@ enum Probe {
             }
             if Date() > deadline {
                 FileManager.default.createFile(atPath: stop.path, contents: nil)
-                throw EngineError.failed("Il disco non ha risposto in 20 minuti. Potrebbe essere danneggiato o in uso da un altro programma.")
+                throw EngineError.failed(loc("The disk did not answer for 20 minutes. It may be damaged or in use by another program."))
             }
             try? await Task.sleep(nanoseconds: 300_000_000)
         }
@@ -142,7 +142,7 @@ enum Probe {
                 if case .log(let level, let msg) = event, level == "critical" || level == "error" { return msg }
                 return nil
             }
-            throw EngineError.failed(errors.last.map(Format.engineMessage) ?? "Impossibile leggere la sorgente.")
+            throw EngineError.failed(errors.last.map(Format.engineMessage) ?? loc("The source cannot be read."))
         }
         return parts
     }
@@ -223,7 +223,7 @@ final class RecoverySession: ObservableObject {
         process = try Runner.launch(workDir: sessionDir, stopFile: stopFile, engineArgs: args, seed: seed, needsAdmin: needsAdmin)
         // The Mac must not go to sleep in the middle of a recovery.
         activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
-                                                         reason: "Recupero dati in corso")
+                                                         reason: loc("Data recovery in progress"))
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 500_000_000)
@@ -248,7 +248,7 @@ final class RecoverySession: ObservableObject {
     /// the runner keeps forcing the stop in the background.
     func abandon() {
         pollTask?.cancel()
-        state = .failed("Il recupero è stato abbandonato: il disco non rispondeva. Il processo viene terminato appena il disco restituisce la lettura in corso.")
+        state = .failed(loc("The recovery was abandoned: the disk was not answering. The process ends as soon as the disk returns the read in progress."))
         finish()
     }
 
@@ -269,7 +269,7 @@ final class RecoverySession: ObservableObject {
     private func poll() -> Bool {
         // The runner exits without .done only if it could not start.
         if let process, !process.isRunning, !FileManager.default.fileExists(atPath: doneFile.path) {
-            state = .failed("Impossibile avviare il recupero (codice \(process.terminationStatus)). Controlla che la cartella di destinazione sia scrivibile.")
+            state = .failed(loc("The recovery could not start (code \(String(process.terminationStatus))). Check that the destination folder is writable."))
             finish()
             return true
         }
@@ -312,7 +312,7 @@ final class RecoverySession: ObservableObject {
             // The engine's counter restarts after some passes: trust the folder.
             totalFiles = max(totalFiles, files.count)
             state = code == 0 ? .finished(exitCode: code)
-                : .failed(lastMessage.isEmpty ? "Il recupero si è interrotto (codice \(code))." : lastMessage)
+                : .failed(lastMessage.isEmpty ? loc("The recovery stopped (code \(String(code)))." ) : lastMessage)
             finish()
             return true
         }
@@ -336,7 +336,9 @@ final class CloneSession: ObservableObject {
     @Published private(set) var copiedBytes: Int64 = 0
     @Published private(set) var bytesPerSecond: Double = 0
 
-    var imageURL: URL { workDir.appendingPathComponent("disco.img") }
+    var imageURL: URL { workDir.appendingPathComponent(imageName) }
+    /// Chosen once: the image keeps its name even if the language changes.
+    private let imageName = loc("disk.img")
     private var controlDir: URL?
     private var pollTask: Task<Void, Never>?
     private var activity: NSObjectProtocol?
@@ -355,10 +357,10 @@ final class CloneSession: ObservableObject {
         let ctl = try Runner.controlDir()
         controlDir = ctl
         _ = try Runner.launch(workDir: workDir, stopFile: ctl.appendingPathComponent("stop"),
-                              command: ["/bin/dd", "if=\(device)", "of=disco.img", "bs=256k", "conv=noerror,sync"],
+                              command: ["/bin/dd", "if=\(device)", "of=" + imageName, "bs=256k", "conv=noerror,sync"],
                               needsAdmin: needsAdmin)
         activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
-                                                         reason: "Copia del disco in corso")
+                                                         reason: loc("Disk copy in progress"))
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -398,7 +400,7 @@ final class CloneSession: ObservableObject {
             if let activity { ProcessInfo.processInfo.endActivity(activity) }
             activity = nil
             state = (code == 0 && copiedBytes > 0) ? .finished
-                : .failed(state == .stopping ? "Copia interrotta: l'immagine contiene solo la parte già letta." : "dd è terminato con codice \(code).")
+                : .failed(state == .stopping ? loc("Copy stopped: the image only holds the part already read.") : loc("dd ended with code \(String(code))."))
             return true
         }
         return false

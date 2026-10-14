@@ -2,6 +2,11 @@
 // JSON log parsing. Kept free of UI code so it can be tested alone.
 import Foundation
 
+/// Text shown to the user. Keys are English; the Italian is in the app's
+/// it.lproj/Localizable.strings. Outside an app bundle (tests, swift run) the
+/// English key itself is returned.
+public func loc(_ value: String.LocalizationValue) -> String { String(localized: value) }
+
 // MARK: - File formats
 
 /// One entry of formats.json, generated from the PhotoRec sources.

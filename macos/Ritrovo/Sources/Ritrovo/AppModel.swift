@@ -9,10 +9,10 @@ enum FilterPreset: String, CaseIterable, Identifiable, Codable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .none: return "Tutte le immagini"
-        case .noThumbnails: return "Niente miniature"
-        case .photos1MP: return "Solo foto vere"
-        case .custom: return "Personalizzato"
+        case .none: return loc("All images")
+        case .noThumbnails: return loc("No thumbnails")
+        case .photos1MP: return loc("Real photos only")
+        case .custom: return loc("Custom")
         }
     }
     var symbol: String {
@@ -25,10 +25,10 @@ enum FilterPreset: String, CaseIterable, Identifiable, Codable {
     }
     var detail: String {
         switch self {
-        case .none: return "Anche icone, anteprime e immagini dei siti web."
-        case .noThumbnails: return "Scarta le immagini sotto i 300 × 300 pixel."
-        case .photos1MP: return "Solo immagini da almeno 1 megapixel e 100 KB: le foto vere."
-        case .custom: return "Larghezza, altezza, megapixel e peso minimi a scelta."
+        case .none: return loc("Icons, previews and website images too.")
+        case .noThumbnails: return loc("Skips images under 300 × 300 pixels.")
+        case .photos1MP: return loc("Only images of at least 1 megapixel and 100 KB: real photos.")
+        case .custom: return loc("Minimum width, height, megapixels and size of your choice.")
         }
     }
     var filters: ImageFilters? {
@@ -186,8 +186,8 @@ final class AppModel: ObservableObject {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.message = "Scegli un'immagine disco (.img, .dd, .dmg, .iso, .raw)"
-        panel.prompt = "Apri"
+        panel.message = loc("Choose a disk image (.img, .dd, .dmg, .iso, .raw)")
+        panel.prompt = loc("Open")
         if panel.runModal() == .OK, let url = panel.url { addImage(url) }
     }
 
@@ -196,7 +196,7 @@ final class AppModel: ObservableObject {
         Task.detached {
             let error = DiskService.eject(ident)
             await MainActor.run {
-                if let error { self.alert = "Impossibile espellere \(source.name): \(error)" }
+                if let error { self.alert = loc("Could not eject \(source.name): \(error)") }
                 self.refreshDisks()
             }
         }
@@ -295,8 +295,8 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "Scegli"
-        panel.message = "Scegli dove salvare i file, su un disco diverso da quello da analizzare."
+        panel.prompt = loc("Choose")
+        panel.message = loc("Choose where to save the files, on a different disk from the one being analyzed.")
         if panel.runModal() == .OK { destination = panel.url }
     }
 
@@ -345,7 +345,7 @@ final class AppModel: ObservableObject {
         guard !isBusy, canResume(entry) else { return }
         let saved = URL(fileURLWithPath: entry.path).appendingPathComponent(".ritrovo.ses")
         guard let text = try? String(contentsOf: saved, encoding: .utf8), let ctl = try? Runner.controlDir() else {
-            alert = "La sessione salvata non è leggibile."
+            alert = loc("The saved session cannot be read.")
             return
         }
         // An image path with a space is given to the engine through a link
@@ -357,13 +357,13 @@ final class AppModel: ObservableObject {
                   (try? FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: device)) != nil else { return nil }
             return link.path
         }) else {
-            alert = "La sessione salvata non è valida."
+            alert = loc("The saved session is not valid.")
             return
         }
         let target = prepared.device.contains(" ") && FileManager.default.fileExists(atPath: link.path) ? link.path : prepared.device
         let seed = ctl.appendingPathComponent("resume.ses")
         do { try prepared.text.write(to: seed, atomically: true, encoding: .utf8) } catch { alert = error.localizedDescription; return }
-        guard let dir = sessionFolder("Ritrovo", entry.sourceName + " (ripresa)") else { return }
+        guard let dir = sessionFolder("Ritrovo", loc("\(entry.sourceName) (resumed)")) else { return }
         let session = RecoverySession(sourceName: entry.sourceName, sessionDir: dir)
         session.onProgress = { s in Dock.badge(s.totalFiles) }
         session.onFinish = { [weak self] s in self?.recoveryFinished(s) }
@@ -394,8 +394,8 @@ final class AppModel: ObservableObject {
         record(s, completed: completed)
         Dock.badge(0)
         Dock.bounce()
-        Notifier.post(title: completed ? "Recupero completato" : "Recupero interrotto",
-                      body: "\(s.sourceName): \(s.totalFiles) file trovati.")
+        Notifier.post(title: completed ? loc("Recovery completed") : loc("Recovery stopped"),
+                      body: "\(s.sourceName): \(Count.filesFound(s.totalFiles))")
     }
 
     func closeSession() {
@@ -412,10 +412,10 @@ final class AppModel: ObservableObject {
     // MARK: Disk image
 
     func startClone() {
-        guard !isBusy, let source = selectedSource, let dir = sessionFolder("Immagine", source.name) else { return }
+        guard !isBusy, let source = selectedSource, let dir = sessionFolder(loc("Image"), source.name) else { return }
         let free = destinationFree ?? 0
         if free < source.size {
-            alert = "Spazio insufficiente: l'immagine di \(source.name) occupa \(Format.bytes(source.size)), sulla destinazione restano \(Format.bytes(free))."
+            alert = loc("Not enough space: the image of \(source.name) takes \(Format.bytes(source.size)), the destination has \(Format.bytes(free)) left.")
             return
         }
         let clone = CloneSession(sourceName: source.name, totalBytes: source.size, workDir: dir)

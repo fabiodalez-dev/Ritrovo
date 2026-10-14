@@ -162,8 +162,8 @@ struct ProgressTrack: View {
         }
         .frame(height: 6)
         .accessibilityElement()
-        .accessibilityLabel("Avanzamento")
-        .accessibilityValue(indeterminate ? "in corso" : "\(Int(fraction * 100)) per cento")
+        .accessibilityLabel("Progress")
+        .accessibilityValue(indeterminate ? loc("in progress") : loc("\(String(Int(fraction * 100))) percent"))
     }
 }
 
@@ -218,6 +218,22 @@ extension FileCategory {
         case .other: return "questionmark.folder"
         }
     }
+}
+
+/// A count with its noun: one key for 1 and one for the others, so English
+/// ("1 file", "2 files") and Italian ("1 file trovato", "2 file trovati")
+/// both read right.
+enum Count {
+    static func files(_ n: Int) -> String { n == 1 ? loc("1 file") : loc("\(Format.number(n)) files") }
+    static func filesFound(_ n: Int) -> String { n == 1 ? loc("1 file found") : loc("\(Format.number(n)) files found") }
+    static func filesOrganized(_ n: Int) -> String { n == 1 ? loc("1 file organized") : loc("\(Format.number(n)) files organized") }
+    static func photosRenamed(_ n: Int) -> String { n == 1 ? loc("1 photo renamed") : loc("\(Format.number(n)) photos renamed") }
+    static func duplicatesMoved(_ n: Int) -> String {
+        n == 1 ? loc("1 duplicate moved to the Duplicates folder.") : loc("\(Format.number(n)) duplicates moved to the Duplicates folder.")
+    }
+    static func formats(_ n: Int) -> String { n == 1 ? loc("1 format") : loc("\(Format.number(n)) formats") }
+    static func items(_ n: Int) -> String { n == 1 ? loc("1 item") : loc("\(Format.number(n)) items") }
+    static func readErrors(_ n: Int) -> String { n == 1 ? loc("1 read error") : loc("\(Format.number(n)) read errors") }
 }
 
 enum Format {

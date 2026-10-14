@@ -431,11 +431,11 @@ func runReviewTests() -> Int {
         defer { try? fm.removeItem(at: dir) }
         Review.write("s", to: dir.appendingPathComponent(".ritrovo.ses"))
         Review.write("l", to: dir.appendingPathComponent(".ritrovo-progress.jsonl"))
-        Review.write("1", to: dir.appendingPathComponent("Per tipo/Foto/jpg/b.jpg"))
+        Review.write("1", to: dir.appendingPathComponent("By type/Photos/jpg/b.jpg"))
         Review.write("2", to: dir.appendingPathComponent("recup_dir.1/a.txt"))
         Review.write("3", to: dir.appendingPathComponent("report-recup_dir.1.xml"))
         let all = RecoveryScanner.allFiles(in: dir).map { $0.url.path.replacingOccurrences(of: dir.path + "/", with: "") }
-        try expect(all == ["Per tipo/Foto/jpg/b.jpg", "recup_dir.1/a.txt"], "\(all)")
+        try expect(all == ["By type/Photos/jpg/b.jpg", "recup_dir.1/a.txt"], "\(all)")
     }
 
     // MARK: - I. Strumenti sui risultati
@@ -459,8 +459,8 @@ func runReviewTests() -> Int {
         Review.write("<xml/>", to: dir.appendingPathComponent("recup_dir.1/report.xml"))
         let r = try Organizer.organizeByType(sessionDir: dir, renameByDate: false)
         try expect(r.moved == 2 && r.renamedByDate == 0, "\(r)")
-        try expect(fm.fileExists(atPath: dir.appendingPathComponent("Per tipo/Foto/jpg/f1.jpg").path), "f1 non rinominato")
-        try expect(fm.fileExists(atPath: dir.appendingPathComponent("Per tipo/Altro/senza estensione/f2").path), "senza estensione")
+        try expect(fm.fileExists(atPath: dir.appendingPathComponent("By type/Photos/jpg/f1.jpg").path), "f1 non rinominato")
+        try expect(fm.fileExists(atPath: dir.appendingPathComponent("By type/Other/no extension/f2").path), "senza estensione")
         try expect(fm.fileExists(atPath: dir.appendingPathComponent("report-recup_dir.1.xml").path), "report")
         try expect(!fm.fileExists(atPath: dir.appendingPathComponent("recup_dir.1").path), "cartella vuota rimossa")
     }
@@ -481,7 +481,7 @@ func runReviewTests() -> Int {
         Review.writeJPEG(dir.appendingPathComponent("recup_dir.1/f1.jpg"), date: "2021:07:14 18:30:05")
         Review.writeJPEG(dir.appendingPathComponent("recup_dir.1/f2.jpg"), date: "2021:07:14 18:30:05")
         let r = try Organizer.organizeByType(sessionDir: dir, renameByDate: true)
-        let names = (try fm.contentsOfDirectory(atPath: dir.appendingPathComponent("Per tipo/Foto/jpg").path)).sorted()
+        let names = (try fm.contentsOfDirectory(atPath: dir.appendingPathComponent("By type/Photos/jpg").path)).sorted()
         try expect(r.renamedByDate == 2 && names == ["2021-07-14 18.30.05 (2).jpg", "2021-07-14 18.30.05.jpg"], "\(names)")
     }
 
@@ -494,7 +494,7 @@ func runReviewTests() -> Int {
         Review.write("", to: dir.appendingPathComponent("recup_dir.1/e1.txt"))
         Review.write("", to: dir.appendingPathComponent("recup_dir.1/e2.txt"))
         try expect(try Organizer.moveDuplicates(sessionDir: dir) == 2, "prima passata")
-        let dups = (try fm.contentsOfDirectory(atPath: dir.appendingPathComponent("Duplicati").path)).sorted()
+        let dups = (try fm.contentsOfDirectory(atPath: dir.appendingPathComponent("Duplicates").path)).sorted()
         try expect(dups == ["c2.txt", "c3.txt"], "spostati: \(dups)")
         try expect(fm.fileExists(atPath: dir.appendingPathComponent("recup_dir.1/d2.txt").path), "d2 spostato per errore")
         try expect(try Organizer.moveDuplicates(sessionDir: dir) == 0, "seconda passata")
@@ -503,9 +503,9 @@ func runReviewTests() -> Int {
     Review.test("I6 CSV: solo intestazione se vuoto, percorsi relativi o assoluti fuori base, a capo nel nome citato") {
         let base = URL(fileURLWithPath: "/base")
         let empty = Organizer.csvReport(files: [], relativeTo: base)
-        try expect(empty == "file,percorso,categoria,estensione,byte,larghezza,altezza,data_scatto\n", "vuoto: \(empty)")
+        try expect(empty == "file,path,category,extension,bytes,width,height,capture_date\n", "vuoto: \(empty)")
         let rows = Organizer.csvReport(files: [Review.file("/base/recup_dir.1/a.txt", size: 3), Review.file("/altrove/b.txt", size: 4)], relativeTo: base)
-        try expect(rows.contains("a.txt,recup_dir.1/a.txt,Documenti,txt,3,,,") && rows.contains("b.txt,/altrove/b.txt,Documenti,txt,4,,,"), rows)
+        try expect(rows.contains("a.txt,recup_dir.1/a.txt,Documents,txt,3,,,") && rows.contains("b.txt,/altrove/b.txt,Documents,txt,4,,,"), rows)
         let nl = Organizer.csvReport(files: [Review.file("/base/a\nb.txt")], relativeTo: base)
         try expect(nl.contains("\"a\nb.txt\""), "a capo non citato: \(nl)")
     }

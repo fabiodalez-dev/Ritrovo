@@ -19,8 +19,8 @@ struct RecoveryView: View {
         .navigationTitle(session.sourceName)
         .toolbar {
             ToolbarItem {
-                Button { showingLog.toggle() } label: { Label("Registro", systemImage: "list.bullet.rectangle") }
-                    .help("Messaggi del motore di recupero")
+                Button { showingLog.toggle() } label: { Label("Log", systemImage: "list.bullet.rectangle") }
+                    .help("Messages from the recovery engine")
                     .popover(isPresented: $showingLog, arrowEdge: .bottom) { LogView(lines: session.logLines) }
             }
         }
@@ -44,22 +44,22 @@ struct RecoveryView: View {
                 .foregroundStyle(Theme.ink2)
                 .lineLimit(2)
             if session.readErrors > 0 {
-                Notice(kind: .warning, text: "\(Format.number(session.readErrors)) errori di lettura",
-                       detail: "Il disco ha settori illeggibili. Conviene interrompere, copiarlo in un'immagine e recuperare dalla copia: così il disco viene letto una volta sola.")
+                Notice(kind: .warning, text: Count.readErrors(session.readErrors),
+                       detail: loc("The disk has unreadable sectors. Better to stop, copy it into an image and recover from the copy: this way the disk is read only once."))
             }
             if case .failed(let message) = session.state {
-                Notice(kind: .danger, text: "Il recupero si è interrotto", detail: message)
+                Notice(kind: .danger, text: loc("The recovery stopped"), detail: message)
             }
         }
     }
 
     @ViewBuilder private var actions: some View {
         HStack(spacing: 8) {
-            Button("Mostra nel Finder") { NSWorkspace.shared.activateFileViewerSelecting([session.sessionDir]) }
+            Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([session.sessionDir]) }
             if session.state == .stopping, let since = session.stopRequestedAt {
                 TimelineView(.periodic(from: since, by: 1)) { context in
                     if context.date.timeIntervalSince(since) > 20 {
-                        Button("Il disco non risponde: torna indietro") {
+                        Button("The disk is not answering: go back") {
                             session.abandon()
                             model.closeSession()
                         }
@@ -67,12 +67,12 @@ struct RecoveryView: View {
                 }
             }
             if running {
-                Button(session.state == .stopping ? "Arresto…" : "Interrompi") { session.stop() }
+                Button(session.state == .stopping ? loc("Stopping…") : loc("Stop")) { session.stop() }
                     .keyboardShortcut(".", modifiers: .command)
                     .disabled(session.state == .stopping)
             } else {
-                Button("Nuovo recupero") { model.closeSession() }
-                Button("Apri i risultati") {
+                Button("New recovery") { model.closeSession() }
+                Button("Open the results") {
                     let path = session.sessionDir.path
                     model.closeSession()
                     model.select(.history(path))
@@ -84,37 +84,37 @@ struct RecoveryView: View {
 
     private var title: String {
         switch session.state {
-        case .running: return "Recupero in corso"
-        case .stopping: return "Arresto in corso"
-        case .finished: return session.stoppedByUser ? "Recupero interrotto" : "Recupero completato"
-        case .failed: return "Recupero interrotto"
+        case .running: return loc("Recovery in progress")
+        case .stopping: return loc("Stopping")
+        case .finished: return session.stoppedByUser ? loc("Recovery stopped") : loc("Recovery completed")
+        case .failed: return loc("Recovery stopped")
         }
     }
 
     private var passText: String? {
         guard running, let p = session.progress else { return nil }
-        return "passaggio \(p.pass + 1)"
+        return loc("pass \(String(p.pass + 1))")
     }
 
     private var facts: String {
         var parts: [String] = []
         if running, let p = session.progress {
-            parts.append("\(Int(p.fraction * 100))%")
+            parts.append(String(Int(p.fraction * 100)) + "%")
             if session.partitionSize > 0 {
                 let done = UInt64(Double(session.partitionSize) * p.fraction)
-                parts.append("\(Format.bytes(done)) di \(Format.bytes(session.partitionSize))")
+                parts.append(loc("\(Format.bytes(done)) of \(Format.bytes(session.partitionSize))"))
             }
         }
-        parts.append("\(Format.number(session.totalFiles)) file trovati")
+        parts.append(Count.filesFound(session.totalFiles))
         if running {
             let speed = Format.speed(session.bytesPerSecond)
             if !speed.isEmpty { parts.append(speed) }
-            if let t = Format.engineDuration(session.progress?.estimated), t > 0 { parts.append("circa \(Format.duration(t)) al termine") }
+            if let t = Format.engineDuration(session.progress?.estimated), t > 0 { parts.append(loc("about \(Format.duration(t)) left")) }
         } else if let t = Format.engineDuration(session.progress?.elapsed) {
-            parts.append("durata \(Format.duration(t))")
+            parts.append(loc("took \(Format.duration(t))"))
         }
-        if !running && session.stoppedByUser { parts.append("si può riprendere dalla barra laterale") }
-        if running && session.progress == nil { return "Avvio del recupero…" }
+        if !running && session.stoppedByUser { parts.append(loc("can be resumed from the sidebar")) }
+        if running && session.progress == nil { return loc("Starting the recovery…") }
         return parts.joined(separator: "  ·  ")
     }
 }
@@ -124,10 +124,10 @@ struct LogView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Registro").font(.system(size: 13, weight: .semibold)).padding(12)
+            Text("Log").font(.system(size: 13, weight: .semibold)).padding(12)
             Hairline()
             if lines.isEmpty {
-                Text("Nessun messaggio.").font(.system(size: 12)).foregroundStyle(Theme.ink2).padding(20)
+                Text("No messages.").font(.system(size: 12)).foregroundStyle(Theme.ink2).padding(20)
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -177,27 +177,29 @@ struct ResultsView: View {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(entry.sourceName).font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.ink)
-                        Text("\(entry.completed ? "Completato" : "Interrotto") il \(entry.date.formatted(date: .long, time: .shortened))  ·  \(Format.number(files.count)) file  ·  \(Format.bytes(files.reduce(0) { $0 + $1.size }))")
+                        Text(verbatim: [entry.completed ? loc("Completed on \(entry.date.formatted(date: .long, time: .shortened))")
+                                                       : loc("Stopped on \(entry.date.formatted(date: .long, time: .shortened))"),
+                                       Count.files(files.count), Format.bytes(files.reduce(0) { $0 + $1.size })].joined(separator: "  ·  "))
                             .font(.system(size: 12).monospacedDigit())
                             .foregroundStyle(Theme.ink2)
                     }
                     Spacer()
-                    Button("Mostra nel Finder") { NSWorkspace.shared.activateFileViewerSelecting([dir]) }
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([dir]) }
                     if model.canResume(entry) {
-                        Button("Riprendi il recupero") { model.resume(entry) }
+                        Button("Resume recovery") { model.resume(entry) }
                             .buttonStyle(PrimaryButtonStyle())
                             .disabled(model.isBusy)
                     }
                 }
                 HStack(spacing: 8) {
-                    Button("Organizza per tipo…") { organizing = true }
-                    Button("Sposta i duplicati") {
-                        run("Ricerca dei duplicati…") {
+                    Button("Organize by type…") { organizing = true }
+                    Button("Set duplicates aside") {
+                        run(loc("Looking for duplicates…")) {
                             let n = try Organizer.moveDuplicates(sessionDir: dir)
-                            return n == 0 ? "Nessun duplicato." : "\(n) duplicati spostati nella cartella Duplicati."
+                            return n == 0 ? loc("No duplicates.") : Count.duplicatesMoved(n)
                         }
                     }
-                    Button("Esporta elenco CSV…") { exportCSV() }
+                    Button("Export CSV list…") { exportCSV() }
                     Spacer()
                     if let working {
                         ProgressView().controlSize(.small)
@@ -210,19 +212,19 @@ struct ResultsView: View {
                 if organizing {
                     Panel(padding: 14) {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("I file vengono spostati in cartelle per tipo, come “Per tipo/Foto/jpg”, dentro la cartella del recupero. Nessun file viene cancellato.")
+                            Text("Files are moved into folders by type, such as “By type/Photos/jpg”, inside the recovery folder. No file is deleted.")
                                 .font(.system(size: 12)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
-                            Toggle("Rinomina le foto con la data di scatto (2021-07-14 18.30.05.jpg)", isOn: $renameByDate)
+                            Toggle("Rename photos after their capture date (2021-07-14 18.30.05.jpg)", isOn: $renameByDate)
                                 .toggleStyle(.checkbox)
                             HStack {
                                 Spacer()
-                                Button("Annulla") { organizing = false }
-                                Button("Organizza") {
+                                Button("Cancel") { organizing = false }
+                                Button("Organize") {
                                     organizing = false
                                     let rename = renameByDate
-                                    run("Organizzazione…") {
+                                    run(loc("Organizing…")) {
                                         let r = try Organizer.organizeByType(sessionDir: dir, renameByDate: rename)
-                                        return "\(r.moved) file organizzati" + (r.renamedByDate > 0 ? ", \(r.renamedByDate) foto rinominate." : ".")
+                                        return Count.filesOrganized(r.moved) + (r.renamedByDate > 0 ? ", " + Count.photosRenamed(r.renamedByDate) : "") + "."
                                     }
                                 }
                                 .buttonStyle(PrimaryButtonStyle())
@@ -237,7 +239,7 @@ struct ResultsView: View {
             if loading {
                 ProgressTrack(fraction: 0, indeterminate: true).frame(width: 200).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ResultsGallery(files: files, emptyText: "La cartella non contiene file recuperati.")
+                ResultsGallery(files: files, emptyText: loc("The folder holds no recovered files."))
             }
         }
         .navigationTitle(entry.sourceName)
@@ -256,7 +258,7 @@ struct ResultsView: View {
         message = nil
         Task {
             let result = await Task.detached { () -> String in
-                do { return try work() } catch { return "Errore: \(error.localizedDescription)" }
+                do { return try work() } catch { return loc("Error: \(error.localizedDescription)") }
             }.value
             working = nil
             message = result
@@ -271,9 +273,9 @@ struct ResultsView: View {
         panel.directoryURL = dir
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let files = self.files, dir = self.dir
-        run("Creazione dell'elenco…") {
+        run(loc("Creating the list…")) {
             try Organizer.csvReport(files: files, relativeTo: dir).write(to: url, atomically: true, encoding: .utf8)
-            return "Elenco salvato: \(url.lastPathComponent)"
+            return loc("List saved: \(url.lastPathComponent)")
         }
     }
 }
@@ -289,20 +291,20 @@ struct CloneView: View {
             Text(detail).font(.system(size: 13)).foregroundStyle(Theme.ink2).fixedSize(horizontal: false, vertical: true)
             ProgressTrack(fraction: clone.state == .finished ? 1 : clone.fraction)
             Text(facts).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ink2)
-            if case .failed(let message) = clone.state { Notice(kind: .danger, text: "Copia interrotta", detail: message) }
+            if case .failed(let message) = clone.state { Notice(kind: .danger, text: loc("Copy stopped"), detail: message) }
             HStack(spacing: 8) {
-                Button("Mostra nel Finder") { NSWorkspace.shared.activateFileViewerSelecting([clone.workDir]) }
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([clone.workDir]) }
                 Spacer()
                 switch clone.state {
                 case .running, .stopping:
-                    Button(clone.state == .stopping ? "Arresto…" : "Interrompi") { clone.stop() }
+                    Button(clone.state == .stopping ? loc("Stopping…") : loc("Stop")) { clone.stop() }
                         .disabled(clone.state == .stopping)
                 case .finished:
-                    Button("Chiudi") { model.closeClone(openImage: false) }
-                    Button("Recupera dall'immagine") { model.closeClone(openImage: true) }
+                    Button("Close") { model.closeClone(openImage: false) }
+                    Button("Recover from the image") { model.closeClone(openImage: true) }
                         .buttonStyle(PrimaryButtonStyle())
                 case .failed:
-                    Button("Chiudi") { model.closeClone(openImage: false) }
+                    Button("Close") { model.closeClone(openImage: false) }
                 }
             }
             .padding(.top, 6)
@@ -310,37 +312,37 @@ struct CloneView: View {
         .padding(48)
         .frame(maxWidth: 640, alignment: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle("Copia di \(clone.sourceName)")
+        .navigationTitle(loc("Copy of \(clone.sourceName)"))
     }
 
     private var title: String {
         switch clone.state {
-        case .running: return "Copia del disco in corso"
-        case .stopping: return "Arresto in corso"
-        case .finished: return "Immagine pronta"
-        case .failed: return "Copia interrotta"
+        case .running: return loc("Copying the disk")
+        case .stopping: return loc("Stopping")
+        case .finished: return loc("Image ready")
+        case .failed: return loc("Copy stopped")
         }
     }
 
     private var detail: String {
         switch clone.state {
         case .running, .stopping:
-            return "\(clone.sourceName) viene letto una volta sola. I blocchi illeggibili vengono riempiti di zeri, così tutto il resto rimane al suo posto."
+            return loc("\(clone.sourceName) is read only once. Unreadable blocks are filled with zeros, so everything else stays in place.")
         case .finished:
-            return "Ora puoi recuperare dall'immagine senza toccare più il disco."
+            return loc("You can now recover from the image without touching the disk again.")
         case .failed:
-            return "L'immagine contiene la parte del disco già letta."
+            return loc("The image holds the part of the disk already read.")
         }
     }
 
     private var facts: String {
-        var parts = ["\(Int((clone.state == .finished ? 1 : clone.fraction) * 100))%",
-                     "\(Format.bytes(clone.copiedBytes)) di \(Format.bytes(clone.totalBytes))"]
+        var parts = [String(Int((clone.state == .finished ? 1 : clone.fraction) * 100)) + "%",
+                     loc("\(Format.bytes(clone.copiedBytes)) of \(Format.bytes(clone.totalBytes))")]
         if clone.state == .running {
             let speed = Format.speed(clone.bytesPerSecond)
             if !speed.isEmpty { parts.append(speed) }
             if clone.bytesPerSecond > 0 {
-                parts.append("circa \(Format.duration(Double(clone.totalBytes - clone.copiedBytes) / clone.bytesPerSecond)) al termine")
+                parts.append(loc("about \(Format.duration(Double(clone.totalBytes - clone.copiedBytes) / clone.bytesPerSecond)) left"))
             }
         }
         return parts.joined(separator: "  ·  ")

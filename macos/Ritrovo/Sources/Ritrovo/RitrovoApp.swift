@@ -20,6 +20,8 @@ struct RitrovoApp: App {
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        // The interface language, before any text is read.
+        AppLanguage.apply(AppLanguage.saved)
         // Launched as a bare executable (swift run): behave like an app.
         NSApplication.shared.setActivationPolicy(.regular)
     }
@@ -35,33 +37,37 @@ struct RitrovoApp: App {
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("Informazioni su Ritrovo") { openWindow(id: "about") }
+                Button("About Ritrovo") { openWindow(id: "about") }
             }
             CommandGroup(replacing: .newItem) {
-                Button("Apri immagine disco…") { model.openImagePanel() }
+                Button("Open Disk Image…") { model.openImagePanel() }
                     .keyboardShortcut("o", modifiers: .command)
                     .disabled(model.isBusy)
             }
-            CommandMenu("Recupero") {
-                Button("Avvia recupero") { model.startRecovery() }
+            CommandMenu("Recovery") {
+                Button("Start Recovery") { model.startRecovery() }
                     .keyboardShortcut("r", modifiers: .command)
                     .disabled(!model.canStart)
-                Button("Interrompi") { model.stopActive() }
+                Button("Stop") { model.stopActive() }
                     .keyboardShortcut(".", modifiers: .command)
                     .disabled(!model.isBusy)
                 Divider()
-                Button("Scegli i formati…") { model.showingFormats = true }
+                Button("Choose Formats…") { model.showingFormats = true }
                     .keyboardShortcut("f", modifiers: [.command, .shift])
                     .disabled(model.selectedPartition == nil)
-                Button("Aggiorna dischi") { model.refreshDisks() }
+                Button("Refresh Disks") { model.refreshDisks() }
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                     .disabled(model.isBusy)
             }
         }
 
-        Window("Informazioni su Ritrovo", id: "about") {
+        Window("About Ritrovo", id: "about") {
             AboutView()
         }
         .windowResizability(.contentSize)
+
+        Settings {
+            SettingsView().environmentObject(model)
+        }
     }
 }

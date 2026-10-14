@@ -46,7 +46,7 @@ public enum DiskTools {
         let pipe = Pipe()
         p.standardOutput = pipe
         p.standardError = pipe
-        guard (try? p.run()) != nil else { return "diskutil non avviato" }
+        guard (try? p.run()) != nil else { return loc("diskutil could not be started") }
         let out = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
         p.waitUntilExit()
         return p.terminationStatus == 0 ? nil : out.trimmingCharacters(in: .whitespacesAndNewlines)

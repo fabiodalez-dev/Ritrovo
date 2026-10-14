@@ -14,12 +14,12 @@ public enum FileCategory: String, CaseIterable, Identifiable, Codable {
 
     public var title: String {
         switch self {
-        case .photo: return "Foto"
-        case .video: return "Video"
-        case .audio: return "Audio"
-        case .document: return "Documenti"
-        case .archive: return "Archivi"
-        case .other: return "Altro"
+        case .photo: return loc("Photos")
+        case .video: return loc("Videos")
+        case .audio: return loc("Audio")
+        case .document: return loc("Documents")
+        case .archive: return loc("Archives")
+        case .other: return loc("Other")
         }
     }
 
@@ -78,10 +78,10 @@ public enum ResultSort: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .newest: return "Ultimi trovati"
-        case .largest: return "Più grandi"
-        case .smallest: return "Più piccoli"
-        case .name: return "Nome"
+        case .newest: return loc("Last found")
+        case .largest: return loc("Largest")
+        case .smallest: return loc("Smallest")
+        case .name: return loc("Name")
         }
     }
 }
@@ -237,6 +237,13 @@ public struct OrganizeResult: Equatable {
 }
 
 public enum Organizer {
+    /// Folder names created inside a recovery folder, in the user's language.
+    public static var byTypeFolder: String { loc("By type") }
+    public static var duplicatesFolder: String { loc("Duplicates") }
+    /// Every name the duplicates folder has had, whatever the language when
+    /// it was created: its files are never compared again.
+    static var duplicatesFolderNames: Set<String> { [duplicatesFolder, "Duplicates", "Duplicati"] }
+
     /// Unique destination: "name.ext", then "name (2).ext", "name (3).ext"...
     public static func uniqueURL(_ url: URL) -> URL {
         let fm = FileManager.default
@@ -260,13 +267,13 @@ public enum Organizer {
         return f
     }()
 
-    /// Moves the recovered files into "Per tipo/<Categoria>/<ext>" inside the
+    /// Moves the recovered files into "By type/<Category>/<ext>" inside the
     /// session folder. Photos with an EXIF capture date can be renamed after
     /// it. Nothing is deleted; empty recup_dir.N folders are removed.
     @discardableResult
     public static func organizeByType(sessionDir: URL, renameByDate: Bool) throws -> OrganizeResult {
         let fm = FileManager.default
-        let root = sessionDir.appendingPathComponent("Per tipo")
+        let root = sessionDir.appendingPathComponent(byTypeFolder)
         var result = OrganizeResult()
         let dirs = (try fm.contentsOfDirectory(atPath: sessionDir.path)).filter { $0.hasPrefix("recup_dir.") }
         for dir in dirs {
@@ -277,7 +284,7 @@ public enum Organizer {
                 guard fm.fileExists(atPath: src.path, isDirectory: &isDir), !isDir.boolValue else { continue }
                 let ext = src.pathExtension.lowercased()
                 let category = FileCategory.of(extension: ext)
-                let target = root.appendingPathComponent(category.title).appendingPathComponent(ext.isEmpty ? "senza estensione" : ext)
+                let target = root.appendingPathComponent(category.title).appendingPathComponent(ext.isEmpty ? loc("no extension") : ext)
                 try fm.createDirectory(at: target, withIntermediateDirectories: true)
                 var destName = name
                 if renameByDate && category == .photo, let date = ImageMetadata.read(src).captureDate {
@@ -300,12 +307,13 @@ public enum Organizer {
     }
 
     /// Identical files (same size, then same SHA-256): every copy after the
-    /// first goes to "Duplicati". Returns the number of files moved.
+    /// first goes to the duplicates folder. Returns the number of files moved.
     @discardableResult
     public static func moveDuplicates(sessionDir: URL) throws -> Int {
         let fm = FileManager.default
-        let dupDir = sessionDir.appendingPathComponent("Duplicati")
-        let files = RecoveryScanner.allFiles(in: sessionDir).filter { !$0.url.path.hasPrefix(dupDir.path + "/") }
+        let dupDir = sessionDir.appendingPathComponent(duplicatesFolder)
+        let excluded = duplicatesFolderNames.map { sessionDir.appendingPathComponent($0).path + "/" }
+        let files = RecoveryScanner.allFiles(in: sessionDir).filter { f in !excluded.contains { f.url.path.hasPrefix($0) } }
         var bySize: [Int64: [RecoveredFile]] = [:]
         for f in files where f.size > 0 { bySize[f.size, default: []].append(f) }
         var moved = 0
@@ -343,7 +351,7 @@ public enum Organizer {
             s.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" }) ? "\"" + s.replacingOccurrences(of: "\"", with: "\"\"") + "\"" : s
         }
         let iso = ISO8601DateFormatter()
-        var lines = ["file,percorso,categoria,estensione,byte,larghezza,altezza,data_scatto"]
+        var lines = [loc("file,path,category,extension,bytes,width,height,capture_date")]
         for f in files {
             let rel = f.url.path.hasPrefix(base.path + "/") ? String(f.url.path.dropFirst(base.path.count + 1)) : f.url.path
             var w = "", h = "", d = ""

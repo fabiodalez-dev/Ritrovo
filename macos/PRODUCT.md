@@ -14,7 +14,7 @@ Ritrovo is a native Mac interface to a proven file carving engine (credited in t
 
 ## Brand Personality
 
-Calm, precise, trustworthy. Quiet confidence of a professional instrument, the opposite of a utility that shouts. Italian copy, plain and short.
+Calm, precise, trustworthy. Quiet confidence of a professional instrument, the opposite of a utility that shouts. Copy in English and Italian, plain and short.
 
 ## Anti-references
 

@@ -48,9 +48,9 @@ struct Sidebar: View {
 
     var body: some View {
         List(selection: Binding(get: { model.selection }, set: { model.select($0) })) {
-            Section("Dischi") {
+            Section("Disks") {
                 if model.disks.isEmpty {
-                    Text(model.loadingDisks ? "Ricerca dei dischi…" : "Nessun disco collegato")
+                    Text(model.loadingDisks ? loc("Looking for disks…") : loc("No disks connected"))
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.ink3)
                 }
@@ -59,16 +59,16 @@ struct Sidebar: View {
                         .tag(SidebarItem.source(disk.id))
                         .contextMenu {
                             if case .disk(let isInternal) = disk.kind, !isInternal {
-                                Button("Espelli \(disk.name)") { model.eject(disk) }
+                                Button("Eject \(disk.name)") { model.eject(disk) }
                             }
                         }
                 }
             }
 
-            Section("Immagini disco") {
+            Section("Disk images") {
                 ForEach(model.images) { SourceRow(source: $0).tag(SidebarItem.source($0.id)) }
                 Button(action: model.openImagePanel) {
-                    Label("Apri immagine…", systemImage: "plus")
+                    Label("Open image…", systemImage: "plus")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.ink2)
                 }
@@ -77,19 +77,19 @@ struct Sidebar: View {
             }
 
             if !model.history.isEmpty {
-                Section("Recuperi") {
+                Section("Recoveries") {
                     ForEach(model.history) { entry in
                         HistoryRow(entry: entry)
                             .tag(SidebarItem.history(entry.path))
                             .contextMenu {
                                 if model.canResume(entry) {
-                                    Button("Riprendi il recupero") { model.resume(entry) }
+                                    Button("Resume recovery") { model.resume(entry) }
                                 }
-                                Button("Mostra nel Finder") {
+                                Button("Show in Finder") {
                                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: entry.path)])
                                 }
                                 Divider()
-                                Button("Rimuovi dall'elenco") { model.forget(entry) }
+                                Button("Remove from list") { model.forget(entry) }
                             }
                     }
                 }
@@ -99,9 +99,9 @@ struct Sidebar: View {
         .disabled(model.isBusy)
         .toolbar {
             ToolbarItem {
-                Button(action: model.refreshDisks) { Label("Aggiorna dischi", systemImage: "arrow.clockwise") }
+                Button(action: model.refreshDisks) { Label("Refresh disks", systemImage: "arrow.clockwise") }
                     .disabled(model.isBusy)
-                    .help("Aggiorna l'elenco dei dischi")
+                    .help("Refresh the list of disks")
             }
         }
     }
@@ -140,7 +140,7 @@ struct HistoryRow: View {
         Label {
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.sourceName).font(.system(size: 13)).lineLimit(1)
-                Text("\(Format.number(entry.totalFiles)) file · \(entry.date.formatted(.dateTime.day().month(.abbreviated).hour().minute()))")
+                Text(verbatim: Count.files(entry.totalFiles) + " · " + entry.date.formatted(.dateTime.day().month(.abbreviated).hour().minute()))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -162,10 +162,10 @@ struct WelcomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Da dove vuoi recuperare?")
+                    Text("Where do you want to recover from?")
                         .font(.system(size: 26, weight: .semibold))
                         .foregroundStyle(Theme.ink)
-                    Text("Scegli un disco, una scheda di memoria o una chiavetta nella barra laterale. Ritrovo la legge soltanto: non scrive mai sulla sorgente, così i file persi restano dove sono.")
+                    Text("Choose a disk, a memory card or a USB drive in the sidebar. Ritrovo only reads it: it never writes to the source, so the lost files stay where they are.")
                         .font(.system(size: 14))
                         .foregroundStyle(Theme.ink2)
                         .lineSpacing(3)
@@ -176,13 +176,13 @@ struct WelcomeView: View {
                     Image(systemName: "externaldrive.badge.plus")
                         .font(.system(size: 26, weight: .light))
                         .foregroundStyle(dropHover ? Theme.accent : Theme.ink3)
-                    Text("Trascina qui un'immagine disco")
+                    Text("Drop a disk image here")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(Theme.ink)
-                    Text(".img, .dd, .dmg, .iso, .raw")
+                    Text(verbatim: ".img, .dd, .dmg, .iso, .raw")
                         .font(.system(size: 11))
                         .foregroundStyle(Theme.ink3)
-                    Button("Scegli un'immagine…", action: model.openImagePanel)
+                    Button("Choose an image…", action: model.openImagePanel)
                         .controlSize(.regular)
                         .padding(.top, 4)
                 }
@@ -201,7 +201,7 @@ struct WelcomeView: View {
 
                 if !model.history.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        SectionLabel(text: "Recuperi recenti")
+                        SectionLabel(text: loc("Recent recoveries"))
                         Panel {
                             VStack(spacing: 0) {
                                 ForEach(Array(model.history.prefix(4).enumerated()), id: \.element.id) { index, entry in
@@ -223,7 +223,7 @@ struct WelcomeView: View {
                     }
                 }
 
-                Text("Consiglio: salva i file recuperati su un disco diverso da quello che stai analizzando.")
+                Text("Tip: save the recovered files on a different disk from the one you are analyzing.")
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.ink3)
             }

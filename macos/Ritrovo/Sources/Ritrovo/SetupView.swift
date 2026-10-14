@@ -13,12 +13,12 @@ struct SetupView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 header
-                section("Partizione", trailing: partitionTrailing) { partitionContent }
+                section(loc("Partition"), trailing: partitionTrailing) { partitionContent }
                 if model.selectedPartition != nil {
-                    section("Cosa recuperare", trailing: "\(model.options.enabledFormats.count) formati su \(model.catalog.count)") { categories }
-                    section("Dove cercare") { searchSpace }
-                    section("Filtro immagini") { filters }
-                    section("Destinazione") { destination }
+                    section(loc("What to recover"), trailing: loc("\(Format.number(model.options.enabledFormats.count)) of \(Format.number(model.catalog.count)) formats")) { categories }
+                    section(loc("Where to search")) { searchSpace }
+                    section(loc("Image filter")) { filters }
+                    section(loc("Destination")) { destination }
                     advanced.id("advanced")
                 }
             }
@@ -61,19 +61,19 @@ struct SetupView: View {
                 .frame(width: 40)
             VStack(alignment: .leading, spacing: 5) {
                 Text(source.name).font(.system(size: 22, weight: .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
-                Text("\(Format.bytes(source.size)) · \(kindText) · \(source.target)")
+                Text(verbatim: "\(Format.bytes(source.size)) · \(kindText) · \(source.target)")
                     .font(.system(size: 12))
                     .foregroundStyle(Theme.ink2)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Label("Solo lettura: la sorgente non viene mai modificata", systemImage: "lock")
+                Label("Read only: the source is never modified", systemImage: "lock")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.ok)
             }
             Spacer()
             if canClone {
-                Button("Copia in un'immagine…") { model.startClone() }
-                    .help("Legge il disco una volta sola e lo salva in un file .img da cui recuperare. Consigliato per dischi lenti o danneggiati.")
+                Button("Copy into an image…") { model.startClone() }
+                    .help("Reads the disk only once and saves it to an .img file to recover from. Recommended for slow or damaged disks.")
                     .disabled(model.isBusy)
             }
         }
@@ -86,15 +86,15 @@ struct SetupView: View {
 
     private var kindText: String {
         switch source.kind {
-        case .disk(let isInternal): return isInternal ? "disco interno" : "disco esterno"
-        case .image: return "immagine disco"
+        case .disk(let isInternal): return isInternal ? loc("internal disk") : loc("external disk")
+        case .image: return loc("disk image")
         }
     }
 
     // MARK: Partition
 
     private var partitionTrailing: String? {
-        if case .loaded(let parts) = model.probe { return parts.count == 1 ? "1 elemento" : "\(parts.count) elementi" }
+        if case .loaded(let parts) = model.probe { return Count.items(parts.count) }
         return nil
     }
 
@@ -103,12 +103,12 @@ struct SetupView: View {
         case .idle where source.needsAdmin:
             Panel(padding: 16) {
                 HStack(spacing: 14) {
-                    Text("Per leggere un disco fisico macOS chiede la password di amministratore. L'accesso resta in sola lettura.")
+                    Text("To read a physical disk macOS asks for the administrator password. Access stays read only.")
                         .font(.system(size: 12))
                         .foregroundStyle(Theme.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer()
-                    Button("Leggi le partizioni") { model.runProbe() }
+                    Button("Read the partitions") { model.runProbe() }
                         .buttonStyle(PrimaryButtonStyle())
                 }
             }
@@ -117,25 +117,26 @@ struct SetupView: View {
         case .loading(let since):
             TimelineView(.periodic(from: since, by: 1)) { context in
                 let seconds = Int(context.date.timeIntervalSince(since))
+                let clock = "\(seconds / 60):" + String(format: "%02d", seconds % 60)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 12) {
                         ProgressTrack(fraction: 0, indeterminate: true).frame(width: 160)
-                        Text("Lettura della tabella delle partizioni  \(seconds / 60):\(String(format: "%02d", seconds % 60))")
+                        Text("Reading the partition table  \(clock)")
                             .font(.system(size: 12).monospacedDigit())
                             .foregroundStyle(Theme.ink2)
                         Spacer()
-                        Button("Annulla") { model.cancelProbe() }
+                        Button("Cancel") { model.cancelProbe() }
                     }
                     if seconds >= 20 {
-                        Notice(kind: .warning, text: "Il disco risponde lentamente",
-                               detail: "Succede con dischi danneggiati o già letti da un altro programma. Può servire qualche minuto.")
+                        Notice(kind: .warning, text: loc("The disk is answering slowly"),
+                               detail: loc("This happens with damaged disks or disks already being read by another program. It may take a few minutes."))
                     }
                 }
             }
         case .failed(let message):
             HStack(alignment: .top) {
-                Notice(kind: .danger, text: "Impossibile leggere le partizioni", detail: message)
-                Button("Riprova") { model.runProbe() }
+                Notice(kind: .danger, text: loc("Could not read the partitions"), detail: message)
+                Button("Try again") { model.runProbe() }
             }
         case .loaded(let parts):
             Panel {
@@ -159,14 +160,14 @@ struct SetupView: View {
     }
 
     private func partitionTitle(_ part: EnginePartition) -> String {
-        if part.isWholeDisk { return "Disco intero" }
-        let name = part.label.isEmpty ? "Partizione \(part.order)" : part.label
+        if part.isWholeDisk { return loc("Whole disk") }
+        let name = part.label.isEmpty ? loc("Partition \(String(part.order))") : part.label
         return part.fileSystem.isEmpty ? name : "\(name)  ·  \(part.fileSystem)"
     }
 
     private func partitionSubtitle(_ part: EnginePartition) -> String {
-        if part.isWholeDisk { return "Ignora le partizioni: utile se la tabella è danneggiata o dopo una riformattazione." }
-        return part.info.isEmpty ? "Partizione \(part.order)" : part.info
+        if part.isWholeDisk { return loc("Ignores the partitions: useful if the table is damaged or after a reformat.") }
+        return part.info.isEmpty ? loc("Partition \(String(part.order))") : part.info
     }
 
     // MARK: What
@@ -182,7 +183,7 @@ struct SetupView: View {
                 }
             }
             Button { model.showingFormats = true } label: {
-                Text("Scegli i singoli formati…").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.accent)
+                Text("Choose individual formats…").font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.accent)
             }
             .buttonStyle(.plain)
             .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
@@ -195,12 +196,12 @@ struct SetupView: View {
         let freeOK = model.selectedPartition?.supportsFreeSpace ?? false
         return Panel {
             VStack(spacing: 0) {
-                ChoiceRow(title: "Tutto lo spazio", subtitle: "Analizza ogni settore. Necessario dopo una formattazione o con un file system danneggiato.",
+                ChoiceRow(title: loc("Whole space"), subtitle: loc("Analyzes every sector. Needed after a format or with a damaged file system."),
                           selected: model.options.searchSpace == .whole) { model.options.searchSpace = .whole }
                 Hairline()
-                ChoiceRow(title: "Solo lo spazio libero",
-                          subtitle: freeOK ? "Solo i blocchi non usati dal file system: più veloce, trova i file cancellati."
-                                           : "Disponibile su partizioni FAT, exFAT, NTFS ed ext2/3/4 riconosciute.",
+                ChoiceRow(title: loc("Free space only"),
+                          subtitle: freeOK ? loc("Only the blocks not used by the file system: faster, finds deleted files.")
+                                           : loc("Available on recognized FAT, exFAT, NTFS and ext2/3/4 partitions."),
                           selected: model.options.searchSpace == .free, enabled: freeOK) { model.options.searchSpace = .free }
             }
         }
@@ -223,17 +224,17 @@ struct SetupView: View {
             if model.filterPreset == .custom {
                 Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 8) {
                     GridRow {
-                        NumberField(title: "Larghezza minima", unit: "px", value: binding(\.filters.minWidth))
-                        NumberField(title: "Altezza minima", unit: "px", value: binding(\.filters.minHeight))
+                        NumberField(title: loc("Minimum width"), unit: "px", value: binding(\.filters.minWidth))
+                        NumberField(title: loc("Minimum height"), unit: "px", value: binding(\.filters.minHeight))
                     }
                     GridRow {
-                        NumberField(title: "Megapixel minimi", unit: "MP", value: megapixelBinding, fractional: true)
-                        NumberField(title: "Dimensione minima", unit: "KB", value: kilobyteBinding)
+                        NumberField(title: loc("Minimum megapixels"), unit: "MP", value: megapixelBinding, fractional: true)
+                        NumberField(title: loc("Minimum size"), unit: "KB", value: kilobyteBinding)
                     }
                 }
                 .padding(.leading, 2)
             }
-            Text("Dimensioni lette da JPG, PNG, GIF, BMP, ICO, WebP, PSD e PCX; per RAW e TIFF vale la dimensione del file. Un'immagine con dimensioni illeggibili viene sempre recuperata.")
+            Text("Dimensions read from JPG, PNG, GIF, BMP, ICO, WebP, PSD and PCX; for RAW and TIFF the file size applies. An image with unreadable dimensions is always recovered.")
                 .font(.system(size: 11))
                 .foregroundStyle(Theme.ink3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -248,23 +249,23 @@ struct SetupView: View {
                 HStack(spacing: 12) {
                     Image(systemName: "folder").font(.system(size: 16)).foregroundStyle(Theme.ink2)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(model.destination?.lastPathComponent ?? "Nessuna cartella").font(.system(size: 13, weight: .medium))
+                        Text(model.destination?.lastPathComponent ?? loc("No folder")).font(.system(size: 13, weight: .medium))
                         Text(model.destination?.path ?? "").font(.system(size: 11)).foregroundStyle(Theme.ink2).lineLimit(1).truncationMode(.middle)
                     }
                     Spacer()
                     if let free = model.destinationFree {
-                        Text("\(Format.bytes(free)) liberi")
+                        Text("\(Format.bytes(free)) free")
                             .font(.system(size: 12).monospacedDigit())
                             .foregroundStyle(model.destinationTooFull ? Theme.bad : Theme.ink2)
                     }
-                    Button("Cambia…", action: model.chooseDestination)
+                    Button("Change…", action: model.chooseDestination)
                 }
             }
             if model.destinationOnSource {
-                Notice(kind: .danger, text: "La cartella è sul disco da recuperare",
-                       detail: "I file salvati sovrascriverebbero quelli da ritrovare. Scegli una cartella su un altro disco.")
+                Notice(kind: .danger, text: loc("The folder is on the disk being recovered"),
+                       detail: loc("The saved files would overwrite the ones to recover. Choose a folder on another disk."))
             } else if model.destinationTooFull {
-                Notice(kind: .danger, text: "Meno di 1 GB libero", detail: "La destinazione si riempirebbe in pochi minuti.")
+                Notice(kind: .danger, text: loc("Less than 1 GB free"), detail: loc("The destination would fill up in a few minutes."))
             }
         }
     }
@@ -276,49 +277,49 @@ struct SetupView: View {
     private var advanced: some View {
         DisclosureGroup(isExpanded: $showAdvanced) {
             VStack(alignment: .leading, spacing: 22) {
-                option("Verifica dei file") {
+                option(loc("File check")) {
                     Picker("", selection: $model.options.validation) {
-                        Text("Normale").tag(Validation.standard)
-                        Text("Disattivata").tag(Validation.off)
-                        Text("Approfondita").tag(Validation.bruteForce)
+                        Text("Normal").tag(Validation.standard)
+                        Text("Off").tag(Validation.off)
+                        Text("Deep").tag(Validation.bruteForce)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(width: 330)
                 } hint: {
                     switch model.options.validation {
-                    case .standard: return "Controlla ogni file e scarta quelli non validi."
-                    case .off: return "Tiene tutto quello che trova, anche file incompleti. Più veloce, più file da sfogliare."
-                    case .bruteForce: return "Prova anche a ricostruire i JPEG frammentati. Molto più lenta."
+                    case .standard: return loc("Checks every file and discards the invalid ones.")
+                    case .off: return loc("Keeps everything it finds, incomplete files too. Faster, more files to browse.")
+                    case .bruteForce: return loc("Also tries to rebuild fragmented JPEGs. Much slower.")
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Toggle("Conserva i file danneggiati", isOn: $model.options.keepCorrupted)
-                    Toggle("Modalità a memoria ridotta, per dischi molto grandi o frammentati", isOn: $model.options.lowMemory)
-                    Toggle("Registro dettagliato", isOn: $model.options.verboseLog)
+                    Toggle("Keep corrupted files", isOn: $model.options.keepCorrupted)
+                    Toggle("Low memory mode, for very large or fragmented disks", isOn: $model.options.lowMemory)
+                    Toggle("Detailed log", isOn: $model.options.verboseLog)
                 }
                 .toggleStyle(.checkbox)
 
-                option("File system Linux") {
+                option(loc("Linux file system")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle("Partizione ext2, ext3 o ext4", isOn: $model.options.ext2Mode).toggleStyle(.checkbox)
+                        Toggle("ext2, ext3 or ext4 partition", isOn: $model.options.ext2Mode).toggleStyle(.checkbox)
                         if model.options.ext2Mode {
                             HStack(spacing: 20) {
-                                NumberField(title: "Inizia dal gruppo", unit: "", value: binding(\.ext2Group))
-                                NumberField(title: "oppure dall'inode", unit: "", value: binding(\.ext2Inode))
+                                NumberField(title: loc("Start from group"), unit: "", value: binding(\.ext2Group))
+                                NumberField(title: loc("or from inode"), unit: "", value: binding(\.ext2Inode))
                             }
                         }
                     }
-                } hint: { "Gruppo o inode di partenza: 0 analizza tutto." }
+                } hint: { loc("Starting group or inode: 0 analyzes everything.") }
 
-                option("Partizione FAT formattata") {
-                    Toggle("Ricostruisci prima la FAT formattata", isOn: $model.options.unformatFAT)
+                option(loc("Formatted FAT partition")) {
+                    Toggle("Rebuild the formatted FAT first", isOn: $model.options.unformatFAT)
                         .toggleStyle(.checkbox)
                         .disabled(!(model.selectedPartition?.isFAT ?? false))
-                } hint: { "Dopo una formattazione rapida ritrova anche nomi e cartelle. Solo per partizioni FAT." }
+                } hint: { loc("After a quick format it also finds names and folders. FAT partitions only.") }
 
-                option("Dimensione del blocco") {
+                option(loc("Block size")) {
                     HStack(spacing: 10) {
                         Picker("", selection: Binding(
                             get: { customBlock ? UInt32.max : model.options.blockSize },
@@ -326,44 +327,44 @@ struct SetupView: View {
                                 customBlock = (v == .max)
                                 if v != .max { model.options.blockSize = v }
                             })) {
-                            Text("Automatica").tag(UInt32(0))
+                            Text("Automatic").tag(UInt32(0))
                             ForEach(Self.blockSizes, id: \.self) { Text(Format.bytes(Int64($0))).tag($0) }
-                            Text("Personalizzata").tag(UInt32.max)
+                            Text("Custom").tag(UInt32.max)
                         }
                         .labelsHidden()
                         .frame(width: 170)
-                        if customBlock { NumberField(title: "Byte", unit: "", value: binding(\.blockSize)) }
+                        if customBlock { NumberField(title: loc("Bytes"), unit: "", value: binding(\.blockSize)) }
                     }
-                } hint: { "Automatica di solito è giusta. Va impostata solo se si conosce il cluster del file system." }
+                } hint: { loc("Automatic is usually right. Set it only if you know the file system cluster size.") }
 
-                option("Tabella delle partizioni") {
+                option(loc("Partition table")) {
                     Picker("", selection: Binding(get: { model.options.partitionTable }, set: { model.setPartitionTable($0) })) {
-                        Text("Rilevata automaticamente").tag(PartitionTable.auto)
+                        Text("Detected automatically").tag(PartitionTable.auto)
                         Divider()
-                        Text("Intel / MBR").tag(PartitionTable.intel)
-                        Text("EFI GPT").tag(PartitionTable.gpt)
-                        Text("Apple").tag(PartitionTable.mac)
-                        Text("Nessuna").tag(PartitionTable.none)
-                        Text("Sun").tag(PartitionTable.sun)
-                        Text("Xbox").tag(PartitionTable.xbox)
-                        Text("Humax").tag(PartitionTable.humax)
+                        Text(verbatim: "Intel / MBR").tag(PartitionTable.intel)
+                        Text(verbatim: "EFI GPT").tag(PartitionTable.gpt)
+                        Text(verbatim: "Apple").tag(PartitionTable.mac)
+                        Text("None").tag(PartitionTable.none)
+                        Text(verbatim: "Sun").tag(PartitionTable.sun)
+                        Text(verbatim: "Xbox").tag(PartitionTable.xbox)
+                        Text(verbatim: "Humax").tag(PartitionTable.humax)
                     }
                     .labelsHidden()
                     .frame(width: 230)
-                } hint: { "Cambiandola, l'elenco delle partizioni viene riletto." }
+                } hint: { loc("Changing it reads the partition list again.") }
 
-                option("Geometria del disco") {
+                option(loc("Disk geometry")) {
                     HStack(spacing: 16) {
-                        NumberField(title: "Cilindri", unit: "", value: binding(\.geometry.cylinders), labelWidth: 60)
-                        NumberField(title: "Testine", unit: "", value: binding(\.geometry.heads), labelWidth: 56)
-                        NumberField(title: "Settori", unit: "", value: binding(\.geometry.sectors), labelWidth: 50)
-                        NumberField(title: "Byte/settore", unit: "", value: binding(\.geometry.sectorSize), labelWidth: 80)
+                        NumberField(title: loc("Cylinders"), unit: "", value: binding(\.geometry.cylinders), labelWidth: 60)
+                        NumberField(title: loc("Heads"), unit: "", value: binding(\.geometry.heads), labelWidth: 56)
+                        NumberField(title: loc("Sectors"), unit: "", value: binding(\.geometry.sectors), labelWidth: 50)
+                        NumberField(title: loc("Bytes/sector"), unit: "", value: binding(\.geometry.sectorSize), labelWidth: 80)
                     }
-                } hint: { "Solo per dischi molto vecchi o immagini senza informazioni. 0 lascia il valore rilevato." }
+                } hint: { loc("Only for very old disks or images without information. 0 keeps the detected value.") }
             }
             .padding(.top, 14)
         } label: {
-            SectionLabel(text: "Opzioni avanzate")
+            SectionLabel(text: loc("Advanced options"))
         }
     }
 
@@ -385,7 +386,7 @@ struct SetupView: View {
                 .lineLimit(1)
             Spacer()
             Button(action: model.startRecovery) {
-                Text("Avvia il recupero")
+                Text("Start recovery")
             }
             .buttonStyle(PrimaryButtonStyle())
             .keyboardShortcut("r", modifiers: .command)
@@ -398,16 +399,16 @@ struct SetupView: View {
     }
 
     private var summary: String {
-        guard let part = model.selectedPartition else { return "Scegli una partizione per continuare." }
-        let name = part.isWholeDisk ? "Disco intero" : (part.label.isEmpty ? "Partizione \(part.order)" : part.label)
+        guard let part = model.selectedPartition else { return loc("Choose a partition to continue.") }
+        let name = part.isWholeDisk ? loc("Whole disk") : (part.label.isEmpty ? loc("Partition \(String(part.order))") : part.label)
         let states = FileCategory.allCases.map { ($0, model.state(of: $0)) }
         let what: String
         if model.options.enabledFormats.count == model.catalog.count {
-            what = "tutti i formati"
+            what = loc("all formats")
         } else if states.allSatisfy({ $0.1 == .none }) {
-            what = "nessun formato"
+            what = loc("no formats")
         } else {
-            what = states.filter { $0.1 != .none }.map { $0.0.title.lowercased() + ($0.1 == .some ? " (in parte)" : "") }.joined(separator: ", ")
+            what = states.filter { $0.1 != .none }.map { $0.0.title.lowercased() + ($0.1 == .some ? " " + loc("(partly)") : "") }.joined(separator: ", ")
         }
         return "\(name) · \(what) · \(model.filterPreset.title.lowercased())"
     }
@@ -452,7 +453,7 @@ struct CategoryToggle: View {
                 Image(systemName: category.outline).font(.system(size: 13)).foregroundStyle(Theme.ink2).frame(width: 18)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(category.title).font(.system(size: 13, weight: .medium)).foregroundStyle(Theme.ink)
-                    Text(state == .some ? "alcuni formati" : "\(formats) formati").font(.system(size: 11)).foregroundStyle(Theme.ink3)
+                    Text(state == .some ? loc("some formats") : Count.formats(formats)).font(.system(size: 11)).foregroundStyle(Theme.ink3)
                 }
                 Spacer(minLength: 0)
             }
@@ -463,7 +464,7 @@ struct CategoryToggle: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(category.title), \(state == .all ? "tutti" : state == .some ? "alcuni" : "nessuno")")
+        .accessibilityLabel(category.title + ", " + (state == .all ? loc("all") : state == .some ? loc("some") : loc("none")))
         .animation(.easeOut(duration: 0.15), value: state == .none)
     }
 }
@@ -501,21 +502,21 @@ struct FormatsSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Formati da recuperare").font(.system(size: 17, weight: .semibold))
+                    Text("Formats to recover").font(.system(size: 17, weight: .semibold))
                     Spacer()
-                    Text("\(enabled.count) di \(catalog.count)").font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ink2)
+                    Text(verbatim: loc("\(Format.number(enabled.count)) of \(Format.number(catalog.count))")).font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.ink2)
                 }
                 HStack(spacing: 10) {
-                    TextField("Cerca per estensione o descrizione", text: $query)
+                    TextField("Search by extension or description", text: $query)
                         .textFieldStyle(.roundedBorder)
-                    Menu("Selezione rapida") {
-                        Button("Formati predefiniti") { enabled = Set(catalog.filter(\.enabledByDefault).map(\.ext)) }
-                        Button("Solo foto") { enabled = set(of: [.photo]) }
-                        Button("Foto e video") { enabled = set(of: [.photo, .video]) }
-                        Button("Documenti") { enabled = set(of: [.document]) }
+                    Menu("Quick selection") {
+                        Button("Default formats") { enabled = Set(catalog.filter(\.enabledByDefault).map(\.ext)) }
+                        Button("Photos only") { enabled = set(of: [.photo]) }
+                        Button("Photos and videos") { enabled = set(of: [.photo, .video]) }
+                        Button("Documents") { enabled = set(of: [.document]) }
                         Divider()
-                        Button("Tutti") { enabled = Set(catalog.map(\.ext)) }
-                        Button("Nessuno") { enabled = [] }
+                        Button("All") { enabled = Set(catalog.map(\.ext)) }
+                        Button("None") { enabled = [] }
                     }
                     .fixedSize()
                 }
@@ -541,8 +542,8 @@ struct FormatsSheet: View {
                             HStack {
                                 Label(cat.title, systemImage: cat.outline)
                                 Spacer()
-                                Button("Tutti") { enabled.formUnion(items.map(\.ext)) }.buttonStyle(.link)
-                                Button("Nessuno") { enabled.subtract(items.map(\.ext)) }.buttonStyle(.link)
+                                Button("All") { enabled.formUnion(items.map(\.ext)) }.buttonStyle(.link)
+                                Button("None") { enabled.subtract(items.map(\.ext)) }.buttonStyle(.link)
                             }
                             .font(.system(size: 11, weight: .semibold))
                         }
@@ -551,15 +552,15 @@ struct FormatsSheet: View {
             }
             .overlay {
                 if filtered.isEmpty {
-                    Text("Nessun formato corrisponde a “\(query)”.").font(.system(size: 12)).foregroundStyle(Theme.ink2)
+                    Text("No format matches “\(query)”.").font(.system(size: 12)).foregroundStyle(Theme.ink2)
                 }
             }
             Hairline()
             HStack {
-                Text("I file vengono riconosciuti dal contenuto: un formato in più non rallenta il recupero.")
+                Text("Files are recognized by their content: one more format does not slow the recovery down.")
                     .font(.system(size: 11)).foregroundStyle(Theme.ink3)
                 Spacer()
-                Button("Fine") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
             }
             .padding(14)
         }

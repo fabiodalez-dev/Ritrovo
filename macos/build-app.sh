@@ -8,7 +8,7 @@ set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 APPDIR="$ROOT/macos/Ritrovo"
 OUT=${OUT:-$ROOT/build-macos/app}
-VERSION=${VERSION:-0.3.0}
+VERSION=${VERSION:-0.4.0}
 MACOS_MIN=13.0
 
 "$ROOT/darwin/build-macos.sh"
@@ -34,7 +34,7 @@ lipo -create "$OUT/swift-arm64/release/Ritrovo" "$OUT/swift-x86_64/release/Ritro
 cp "$ENGINE/dist/photorec" "$APP/Contents/MacOS/ritrovo-engine"
 cp "$OUT/formats.json" "$APP/Contents/Resources/"
 cp "$APPDIR/Resources/ritrovo-run.sh" "$APP/Contents/Resources/"
-cp -R "$APPDIR/Resources/it.lproj" "$APP/Contents/Resources/"
+cp -R "$APPDIR/Resources/en.lproj" "$APPDIR/Resources/it.lproj" "$APP/Contents/Resources/"
 cp "$ROOT/COPYING" "$APP/Contents/Resources/COPYING"
 if [ -f "$APPDIR/Resources/AppIcon.icns" ]; then
   cp "$APPDIR/Resources/AppIcon.icns" "$APP/Contents/Resources/"
@@ -46,8 +46,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key><string>Ritrovo</string>
-  <key>CFBundleDevelopmentRegion</key><string>it</string>
-  <key>CFBundleLocalizations</key><array><string>it</string></array>
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key><array><string>en</string><string>it</string></array>
   <key>CFBundleDisplayName</key><string>Ritrovo</string>
   <key>CFBundleIdentifier</key><string>it.fabiodalez.ritrovo</string>
   <key>CFBundleExecutable</key><string>Ritrovo</string>
