@@ -2,15 +2,15 @@
 
 Ritrovo is a native macOS app for recovering photos, videos and documents from disks, memory cards, USB drives and disk images: a deleted folder, a formatted card, a drive that is starting to fail.
 
-**The recovery engine is [PhotoRec](https://www.cgsecurity.org/wiki/PhotoRec) by Christophe Grenier (CGSecurity).** Ritrovo is only an interface: every file is found and rebuilt by the PhotoRec command line program bundled inside the app, so recovery results are the same as PhotoRec's own. Ritrovo is not an official CGSecurity product. This repository is a fork of [cgsecurity/testdisk](https://github.com/cgsecurity/testdisk); the app lives in [`macos/`](https://github.com/fabiodalez-dev/ritrovo/tree/main/macos).
+**The recovery engine is [PhotoRec](https://www.cgsecurity.org/wiki/PhotoRec) by Christophe Grenier (CGSecurity).** Ritrovo is only an interface: every file is found and rebuilt by the PhotoRec command line program bundled inside the app, so recovery results are the same as PhotoRec's own. Ritrovo is not an official CGSecurity product. This repository is a fork of [cgsecurity/testdisk](https://github.com/cgsecurity/testdisk); the app lives in [`macos/`](https://github.com/fabiodalez-dev/Ritrovo/tree/main/macos).
 
 The interface is in English and Italian: English by default, Italian (or the system language) in Ritrovo › Settings.
 
-![Choosing what to recover from a memory card](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/setup.png)
+![Choosing what to recover from a memory card](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/setup.png)
 
 ## Download
 
-Get `Ritrovo-<version>.dmg` from the [latest release](https://github.com/fabiodalez-dev/ritrovo/releases/latest), open it and drag Ritrovo to Applications. Universal app (Apple Silicon and Intel), macOS 13 or later.
+Get `Ritrovo-<version>.dmg` from the [latest release](https://github.com/fabiodalez-dev/Ritrovo/releases/latest), open it and drag Ritrovo to Applications. Universal app (Apple Silicon and Intel), macOS 13 or later.
 
 The app is signed ad-hoc, not with an Apple Developer ID. The first time, right click on Ritrovo in Applications and choose Open.
 
@@ -23,9 +23,9 @@ The app is signed ad-hoc, not with an Apple Developer ID. The first time, right 
 
 The source is only ever read: Ritrovo never writes to it, and warns when the destination folder is on the disk being recovered.
 
-![Recovery in progress](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/recovery.png)
+![Recovery in progress](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/recovery.png)
 
-![Recovered files](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/results.png)
+![Recovered files](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/results.png)
 
 ## Features
 
@@ -40,15 +40,15 @@ The source is only ever read: Ritrovo never writes to it, and warns when the des
 - Light and dark appearance
 - English and Italian interface, chosen in Settings (⌘,)
 
-![Choosing the interface language](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/language.png)
+![Choosing the interface language](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/language.png)
 
 | Formats | Advanced options | Dark appearance |
 |---|---|---|
-| ![Every format, by category](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/formats.png) | ![Every engine option](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/advanced.png) | ![Results in dark appearance](https://github.com/fabiodalez-dev/ritrovo/raw/main/macos/screenshots/dark.png) |
+| ![Every format, by category](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/formats.png) | ![Every engine option](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/advanced.png) | ![Results in dark appearance](https://github.com/fabiodalez-dev/Ritrovo/raw/main/macos/screenshots/dark.png) |
 
 ## Security
 
-Reading a raw disk needs root, so PhotoRec runs as root after the standard macOS administrator prompt, and only to read a physical disk: disk images are always read as the user. The helper script creates the destination folder itself, refuses existing folders and symbolic links, makes the engine write only inside that folder, and gives the files back to the user at the end. Details and the known limit of an ad-hoc signed app are in [`macos/README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/macos/README.md#security).
+Reading a raw disk needs root, so PhotoRec runs as root after the standard macOS administrator prompt, and only to read a physical disk: disk images are always read as the user. The helper script creates the destination folder itself, refuses existing folders and symbolic links, makes the engine write only inside that folder, and gives the files back to the user at the end. Details and the known limit of an ad-hoc signed app are in [`macos/README.md`](https://github.com/fabiodalez-dev/Ritrovo/blob/main/macos/README.md#security).
 
 ## Build and tests
 
@@ -59,8 +59,8 @@ macos/build-app.sh
 cd macos/Ritrovo && swift run RitrovoCoreTests
 ```
 
-The end to end self test drives the real app through every screen and takes the screenshots on this page. See [`macos/README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/macos/README.md#tests).
+The end to end self test drives the real app through every screen and takes the screenshots on this page. See [`macos/README.md`](https://github.com/fabiodalez-dev/Ritrovo/blob/main/macos/README.md#tests).
 
 ## License
 
-GNU General Public License, version 2 or later, like PhotoRec. See [`COPYING`](https://github.com/fabiodalez-dev/ritrovo/blob/main/COPYING). The original TestDisk and PhotoRec README is [`README.md`](https://github.com/fabiodalez-dev/ritrovo/blob/main/README.md) at the root of the repository.
+GNU General Public License, version 2 or later, like PhotoRec. See [`COPYING`](https://github.com/fabiodalez-dev/Ritrovo/blob/main/COPYING). The original TestDisk and PhotoRec README is [`README.md`](https://github.com/fabiodalez-dev/Ritrovo/blob/main/README.md) at the root of the repository.
